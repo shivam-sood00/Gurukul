@@ -1,10 +1,8 @@
 <div align="center">
 
-<a href="https://shivamsood.org/Gurukul/">
-  <img src="website/static/img/logo.svg" width="104" alt="Gurukul logo">
-</a>
-
-<h1>Gurukul</h1>
+<h1>
+  <a href="https://shivamsood.org/Gurukul/"><img src="website/static/img/logo.svg" width="72" alt="Gurukul logo" align="middle"></a>&nbsp;Gurukul
+</h1>
 
 <p><strong>An open research workspace for robot learning</strong></p>
 
@@ -20,12 +18,6 @@
   <a href="https://github.com/isaac-sim/IsaacLab"><img src="https://img.shields.io/badge/Built_on-Isaac_Lab-20c4b8?style=flat-square" alt="Built on Isaac Lab"></a>
   <a href="source/Gurukul/setup.py"><img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&amp;logo=python&amp;logoColor=white" alt="Python 3.10 or newer"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-78c56e?style=flat-square" alt="Apache License 2.0"></a>
-</p>
-
-<p>
-  <a href="https://shivamsood.org/Gurukul/docs/getting-started/installation"><strong>Getting Started</strong></a> ·
-  <a href="https://shivamsood.org/Gurukul/docs/tasks/overview"><strong>Tasks</strong></a> ·
-  <a href="https://shivamsood.org/Gurukul/docs/reference/task-status"><strong>Task Status</strong></a>
 </p>
 
 </div>
@@ -134,7 +126,7 @@ for the task you want to run.
 ## Acknowledgements & License
 
 Gurukul builds on [Isaac Lab](https://github.com/isaac-sim/IsaacLab) and with the task structure originally based on
-[`fan-ziqi/robot_lab`](https://github.com/fan-ziqi/robot_lab). Individual task pages document the papers, repositories,
+[fan-ziqi/robot_lab](https://github.com/fan-ziqi/robot_lab). Individual task pages document the papers, repositories,
 datasets, and assets used by each implementation.
 
 See the project [acknowledgements](https://shivamsood.org/Gurukul/docs/reference/credits),
