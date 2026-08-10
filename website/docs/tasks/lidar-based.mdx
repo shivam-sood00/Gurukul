@@ -1,0 +1,116 @@
+---
+title: LiDAR Locomotion
+description: Experimental LiDAR locomotion and reusable RealisticLidar sensor workflows.
+maturity: experimental
+targets:
+  - sim
+---
+
+import StatusBadges from '@site/src/components/StatusBadges';
+
+# LiDAR Locomotion
+
+<StatusBadges
+  maturity="experimental"
+  targets={['sim']}
+  note="Optional local integration: the public repository excludes the unlicensed upstream adapter and scan-pattern files."
+/>
+
+:::caution[Not included in the default public checkout]
+The OmniPerception vendor tree, scan patterns, and derivative Gurukul lidar runtime files are kept local and ignored by
+Git because the audited upstream snapshot did not provide a license grant. This task ID is registered only when the
+optional local integration is present. Follow the local-installation notes below before using the commands.
+:::
+
+## What It Is
+
+LiDAR support covers two connected pieces:
+
+- A Go2 rough velocity locomotion task that consumes Livox Mid360-style point observations with a PointNet-style encoder.
+- Reusable `RealisticLidar` sensor infrastructure for Livox-style ray-cast demos and scene integration.
+
+## Install the Optional Integration
+
+- Source: [official OmniPerception repository](https://github.com/aCodeDog/OmniPerception)
+- Paper: [Omni-Perception](https://arxiv.org/abs/2505.19214)
+- Expected local vendor path: `third_party/OmniPerception/`
+
+The audited upstream snapshot, commit `a1059ae3ffb91ebea2854f8633a28027a0477d1c`, did not contain a license grant.
+Obtain terms that cover your use from the upstream authors before downloading or adapting it. The vendor tree, copied
+scan-pattern arrays, and Gurukul's derivative lidar runtime files are excluded from the public repository and their
+local paths are ignored by Git.
+
+The public package retains only license-independent lidar mount metadata. Because both the scan patterns and local
+adapter are excluded, cloning the upstream repository alone does not make this task runnable. Use the upstream Isaac
+Lab integration under terms you have obtained, or provide compatible local modules at:
+
+```text
+source/Gurukul/Gurukul/assets/omni_perception.py
+source/Gurukul/Gurukul/assets/realistic_lidar.py
+```
+
+## Main Commands
+
+Train the Go2 LiDAR policy:
+
+```bash
+python scripts/reinforcement_learning/rsl_rl/train.py \
+  --task=Gurukul-Isaac-Velocity-Rough-Unitree-Go2-Lidar-v0 \
+  --headless \
+  --run_name go2_lidar_pointnet
+```
+
+Play with LiDAR view:
+
+```bash
+python scripts/reinforcement_learning/rsl_rl/play.py \
+  --task=Gurukul-Isaac-Velocity-Rough-Unitree-Go2-Lidar-v0 \
+  --checkpoint logs/rsl_rl/unitree_go2_rough_lidar_pointnet/<run_folder>/model_<iter>.pt \
+  --num_envs 1 \
+  --real-time \
+  --camera_follow_mode follow \
+  --lidar-debug-vis
+```
+
+Validate robot LiDAR mounts:
+
+```bash
+python scripts/tools/test_robot_lidar_mounts.py
+```
+
+```bash
+python scripts/tools/visualize_robot_lidar_mounts.py --robot go2 --real-time
+python scripts/tools/visualize_robot_lidar_mounts.py --robot go2 --terrain uneven --dynamic-obstacles --real-time
+python scripts/tools/visualize_robot_lidar_mounts.py --robot go2 --terrain uneven --dynamic-mesh-obstacles --real-time
+```
+
+```bash
+python scripts/tools/validate_lidar_multi_env.py --num-envs 1 16 256 4096
+```
+
+Run visual sensor demos:
+
+```bash
+python scripts/tools/demo_lidar_static_scene.py --real-time --frame
+python scripts/tools/demo_lidar_static_scene.py --real-time --pointcloud --pointcloud-frame world
+python scripts/tools/demo_lidar_static_scene.py --real-time --rays --frame --max-debug-rays 64 --debug-every 12
+python scripts/tools/demo_lidar_moving_sensor.py --real-time --rays --max-debug-rays 64 --debug-every 12
+python scripts/tools/demo_lidar_robot_mount.py --robot go2 --real-time --rays --max-debug-rays 64 --debug-every 12
+python scripts/tools/demo_lidar_robot_mount.py --robot go2 --terrain rough --scripted-motion --pointcloud --real-time
+python scripts/tools/demo_lidar_noise_dropout.py --real-time
+python scripts/tools/demo_lidar_pattern_compare.py --real-time
+```
+
+Use `--headless --duration-seconds 2` for quick smoke checks.
+
+## Task IDs
+
+```text
+Gurukul-Isaac-Velocity-Rough-Unitree-Go2-Lidar-v0
+```
+
+## References and credits
+
+- [Omni-Perception: Omnidirectional Collision Avoidance for Legged Locomotion in Dynamic Environments](https://arxiv.org/abs/2505.19214)
+- [Official OmniPerception repository](https://github.com/aCodeDog/OmniPerception), pinned locally at
+  `a1059ae3ffb91ebea2854f8633a28027a0477d1c`

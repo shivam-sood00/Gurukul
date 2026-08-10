@@ -1,0 +1,11 @@
+# Ignore all other files
+.python.env
+*.json
+browse.vc.db*
+
+# Note: These files are kept for development purposes only.
+!tools/launch.template.json
+!tools/settings.template.json
+!tools/setup_vscode.py
+!extensions.json
+!tasks.json

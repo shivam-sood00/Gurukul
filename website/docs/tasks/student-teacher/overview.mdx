@@ -1,0 +1,71 @@
+---
+title: Student-Teacher Learning
+description: Teacher policies, student distillation, depth learning, and deployable export workflows.
+---
+
+import YouTubeEmbed from '@site/src/components/YouTubeEmbed';
+
+# Student-Teacher Learning
+
+:::info[Available paths]
+Teacher and student training runs in Isaac Lab. Selected deployable student actors can be exported to the MuJoCo paths
+listed on the Sim2Sim page. Privileged teacher inputs remain evaluation or supervision inputs and are not deployment
+interfaces.
+:::
+
+Student-teacher workflows in Gurukul cover teacher policies, student distillation, depth-student training, action-prior variants, and concurrent teacher-student training.
+
+<YouTubeEmbed
+  videoId="YPdpsaqNc_c"
+  title="Gurukul student-teacher task video"
+  caption="Student-teacher demo."
+/>
+
+## Code paths
+
+- Shared RSL-RL training entry point: `scripts/reinforcement_learning/rsl_rl/train.py`.
+- Playback and export entry point: `scripts/reinforcement_learning/rsl_rl/play.py`.
+- Go2 APEX teacher, distillation, depth distillation, and action-prior agent configs under `source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/agents/`.
+- Concurrent teacher-student extensions live in `source/Gurukul/Gurukul/tasks/manager_based/concurrent_teacher_student.py`.
+- Go2 student baseline recipes in [Training recipes](training-recipes).
+- Depth student-teacher policy code under `source/Gurukul/Gurukul/tasks/manager_based/locomotion/velocity/depth_student_teacher.py`.
+
+## Subsections
+
+- [Depth backbones](depth-backbones): feed-forward CNN depth students and START-style recurrent depth students.
+- [Losses](losses): behavior cloning, terrain reconstruction, and action-prior reward terms.
+- [APEX distillation](apex-distillation): Go2 APEX teacher, distillation, and depth action-prior paths.
+- [Concurrent teacher-student](concurrent-teacher-student): rough Go2 CTS task, interfaces, logs, and reward notes.
+- [Velocity student variants](../velocity-locomotion/depth-students): Go2 depth distillation and recurrent student entry points.
+- [Training recipes](training-recipes): teacher, student, depth action-prior, and evaluation commands.
+- [Sim2Sim](sim2sim): student export compatibility, depth-student runner notes, and MuJoCo transfer checks.
+- [Debugging](debugging): checkpoint, observation, depth-camera, and transfer checks.
+
+## Typical pattern
+
+1. Train or select a teacher run.
+2. Train a student with the matching task and distillation/action-prior agent entry point.
+3. Use explicit teacher checkpoint flags when the student and teacher run folders differ.
+4. Play the student checkpoint and check observations, action order, and export behavior.
+5. Export only deployable student actors to sim2sim; teacher-side privileged observations stay in Isaac Lab evaluation.
+
+## Example flags
+
+```bash
+python scripts/reinforcement_learning/rsl_rl/train.py \
+  --task=<student_task_id> \
+  --headless \
+  --agent=<student_agent_entry_point> \
+  --teacher_load_run <teacher_run_folder_name> \
+  --run_name <student_run_name>
+```
+
+Use the linked student-teacher subpages for exact task IDs and agent entry points.
+
+For concurrent teacher-student training, use the dedicated [Concurrent Teacher-Student](concurrent-teacher-student) page.
+
+## Credits
+
+These workflows extend Isaac Lab/RSL-RL interfaces and the local baseline task structure. The APEX, DecAP, START,
+REAL, AME, and concurrent teacher-student pages identify their scientific sources and scope differences; see the
+[Acknowledgements](../../reference/credits) for shared foundations.

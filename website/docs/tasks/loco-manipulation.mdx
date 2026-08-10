@@ -1,0 +1,64 @@
+---
+title: Loco-Manipulation
+description: Quadruped-with-arm and PM01 whole-body object-interaction tasks.
+---
+
+import YouTubeEmbed from '@site/src/components/YouTubeEmbed';
+
+# Loco-Manipulation
+
+## What It Is
+
+Loco-manipulation tasks combine base locomotion with mounted arms or whole-body object interaction. Use this page as
+the entry point, then open the matching task page for commands and implementation notes.
+
+## Video
+
+<YouTubeEmbed
+  videoId="0FOvqjk3mTo"
+  title="Go2 Airbot locomotion with random arm movements"
+  caption="Airbot example only; it is not evidence for the D1 or PM01 task families below."
+/>
+
+## Main Commands
+
+Start with a small smoke test before launching large environment counts.
+
+```bash
+python scripts/reinforcement_learning/rsl_rl/train.py \
+  --task=Gurukul-Isaac-WBC-Flat-Unitree-Go2-D1-Arm-v0 \
+  --headless \
+  --agent=rsl_rl_cfg_entry_point \
+  --run_name unitree_go2_d1_wbc_flat \
+  --num_envs 256
+```
+
+```bash
+python scripts/reinforcement_learning/rsl_rl/train.py \
+  --task=Gurukul-Isaac-LocoManip-Flat-Unitree-Go2-D1-Pick-v0 \
+  --headless \
+  --agent=rsl_rl_cfg_entry_point \
+  --run_name go2_d1_pick_flat \
+  --num_envs 256
+```
+
+## Task Pages
+
+| Task page | What it covers |
+| --- | --- |
+| [Quadruped + Arm](quadruped-with-arm) | Index for Go2+Airbot, Go2+D1, and B2+Z1 arm tasks. |
+| [Go2 + Airbot](quadruped-with-arm/go2-airbot) | Fixed-arm and scripted Airbot ArmMoving velocity tasks. |
+| [Go2 + D1 WBC](quadruped-with-arm/go2-d1-wbc) | Go2+D1 whole-body pretraining, policy-controlled arm, and ArmMoving tasks. |
+| [LLM High-Level Planning](llm-high-level-planning) | Language-conditioned planning over bounded locomotion, IK, posture, and gripper primitives. |
+| [Go2 + D1 Pick / Pick-Place](quadruped-with-arm/go2-d1-pick-place) | Object pickup and tray placement tasks. |
+| [B2 + Z1 Whole-Body Control](quadruped-with-arm/b2-z1-wbc) | B2+Z1 ArmMoving, WideArmMoving, teacher, and distillation tasks. |
+| [B2 + Z1 Pick and Throw](quadruped-with-arm/pick-throw) | Pickup object, throw target, and in-bin reward task. |
+| [B2 + Z1 Badminton](quadruped-with-arm/badminton) | Shuttle proxy, racket proxy, net, and landing-target task. |
+| [EngineAI PM01](beyondmimic/pm01#loco-manipulation) | Tabletop sliding and 6--10 kg heavy-crate pushing with DeepMimic or AMP. |
+
+## Acknowledgements
+
+The Go2+Airbot baseline was inspired by and adapted from
+[`fan-ziqi/robot_lab`](https://github.com/fan-ziqi/robot_lab). The Go2+D1 and B2+Z1 task families are Gurukul work. Each
+task page identifies the papers, repositories, and assets that directly informed it; shared foundations are listed in
+[Acknowledgements](../reference/credits).

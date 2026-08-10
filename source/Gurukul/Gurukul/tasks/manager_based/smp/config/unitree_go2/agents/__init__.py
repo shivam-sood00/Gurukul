@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: Apache-2.0
+
+"""RSL-RL agent configuration for the Unitree Go2 SMP task."""

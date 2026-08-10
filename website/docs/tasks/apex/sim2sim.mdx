@@ -1,0 +1,370 @@
+---
+title: Sim2Sim
+---
+
+# Sim2Sim
+
+## What It Is
+
+APEX sim2sim uses the bundled Unitree MuJoCo runner in
+`unitree-sim2real/RL_policy_runner/sim2sim/run_rl_policy.py`.
+The current base APEX task and tracker exports both start from a 46-D actor observation whose command slice is
+`[vx, vy, vz, yaw_rate]`; tracker variants then append reference-motion observations from the active motion clip. The
+maintained base YAML uses `observation_layout: go2_apex_base` and rejects an ONNX export whose static input width is not
+46. Historical 45-D exports must use the explicitly labelled `go2_apex_flat_legacy_45.yaml` compatibility config.
+
+## Main Commands
+
+From `unitree-sim2real/`:
+
+```bash
+python RL_policy_runner/sim2sim/run_rl_policy.py \
+  --task go2_apex_flat_tracker_v0 \
+  --run latest
+```
+
+When `--launch-mujoco` is used, the runner starts MuJoCo in its own process group and terminates that group on exit.
+Stale `unitree_mujoco` Python processes from older runs should be killed manually before judging GPU memory usage.
+
+For the distilled one-step history student, export the Isaac checkpoint once with the distillation agent:
+
+```bash
+python scripts/reinforcement_learning/rsl_rl/play.py \
+  --task=Gurukul-Isaac-Go2-APEX-Flat-Tracker-One-Step-Future-History-v0 \
+  --agent=rsl_rl_distillation_cfg_entry_point \
+  --load_run <history_distill_run> \
+  --checkpoint model_.*.pt \
+  --num_envs 1 \
+  --max_steps 1 \
+  --headless
+```
+
+Then run sim2sim from `unitree-sim2real/`:
+
+```bash
+python RL_policy_runner/sim2sim/run_rl_policy.py \
+  --task go2_apex_flat_tracker_one_step_future_history_v0 \
+  --run latest
+```
+
+The Go2+D1 deployment contract supports either the normal direct-PPO policy or the separately distilled student.
+Use the commands on the [training page](training). Distilled checkpoints live under:
+
+```bash
+logs/rsl_rl/unitree_go2_d1_arm_apex_flat_tracker_distill/<run>/
+```
+
+The normal direct-PPO task and privileged teacher use original additive DecAP during training; it decays completely
+before deployment. The separate distilled student has DecAP fixed at zero and directly predicts all 19 targets at
+50 Hz. Older permanent-residual or target-blend D1 checkpoints are action-semantics incompatible even though their
+observation and action tensor dimensions match.
+
+Export a trained Go2+D1 walk-then-wave policy from the repository root:
+
+```bash
+python scripts/reinforcement_learning/rsl_rl/play.py \
+  --task=Gurukul-Isaac-Go2-D1-Arm-APEX-Distillation-Student-v0 \
+  --motion-file source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/go2_d1/walk_then_wave_hello.npz \
+  --agent=rsl_rl_distillation_cfg_entry_point \
+  --load_run <go2_d1_run_folder_name> \
+  --num_envs 1 \
+  --max_steps 1 \
+  --headless
+```
+
+Omitting `--checkpoint` selects the latest numbered checkpoint in that run. To pin one, pass its exact path, such as
+`--checkpoint logs/rsl_rl/unitree_go2_d1_arm_apex_flat_tracker_distill/<run>/model_5000.pt`.
+
+Then launch its MuJoCo sim2sim rollout:
+
+```bash
+cd unitree-sim2real
+python RL_policy_runner/sim2sim/run_rl_policy.py \
+  --task go2_d1_arm_apex_distillation_student_v0 \
+  --run latest \
+  --launch-mujoco
+```
+
+For a normal direct-PPO export, use
+`Gurukul-Isaac-Go2-D1-Arm-APEX-Flat-Tracker-v0` with
+`--agent=rsl_rl_cfg_entry_point`, then run:
+
+```bash
+python RL_policy_runner/sim2sim/run_rl_policy.py \
+  --task go2_d1_arm_apex_flat_tracker_v0 \
+  --run latest \
+  --launch-mujoco
+```
+
+To pin the student showcase reference instead of relying on the motion recorded with the export, add:
+
+```bash
+  --motion-file ../source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/go2_d1/student_showcase.npz
+```
+
+Run the B2+Z1 history tracker:
+
+```bash
+python RL_policy_runner/sim2sim/run_rl_policy.py \
+  --task b2_z1_arm_apex_flat_tracker_one_step_future_history_v0 \
+  --run latest
+```
+
+Run the B2+Z1 non-history one-step tracker:
+
+```bash
+python RL_policy_runner/sim2sim/run_rl_policy.py \
+  --task b2_z1_arm_apex_flat_tracker_one_step_future_v0 \
+  --run latest
+```
+
+Use a specific exported policy when it is outside the default logs layout:
+
+```bash
+python RL_policy_runner/sim2sim/run_rl_policy.py \
+  --task go2_apex_flat_tracker_v0 \
+  --policy-path ../logs/rsl_rl/unitree_go2_apex_flat_tracker/<run>/exported/policy.onnx
+```
+
+Use viser for browser playback:
+
+```bash
+python RL_policy_runner/sim2sim/run_rl_policy.py \
+  --task go2_apex_flat_tracker_one_step_future_v0 \
+  --viser \
+  --run latest
+```
+
+## Runner Tasks
+
+| Runner task | Isaac Lab task | Observation contract |
+| --- | --- | --- |
+| `go2_apex_flat_v0` | `Gurukul-Isaac-Go2-APEX-Flat-v0` | Current 46-D Go2 contract: angular velocity, gravity, `[vx, vy, vz, yaw_rate]`, joint position/velocity, and previous action. |
+| `go2_apex_flat_tracker_v0` | `Gurukul-Isaac-Go2-APEX-Flat-Tracker-v0` | 46 deployable terms plus 5 reference frames, `156` total observations. |
+| `go2_d1_arm_apex_flat_tracker_v0` | `Gurukul-Isaac-Go2-D1-Arm-APEX-Flat-Tracker-v0` | Direct-PPO policy with 60 deployable terms, motion `skill`, and 5 reference frames, `206` total observations. D1 feedback is position-only. |
+| `go2_d1_arm_apex_distillation_student_v0` | `Gurukul-Isaac-Go2-D1-Arm-APEX-Distillation-Student-v0` | Supervised student with the same 206-input deployable contract and direct 19-target output. |
+| `go2_apex_flat_tracker_one_step_future_v0` | `Gurukul-Isaac-Go2-APEX-Flat-Tracker-One-Step-Future-v0` | 46 deployable terms plus 2 reference frames, `90` total observations. |
+| `go2_apex_flat_tracker_one_step_future_history_v0` | `Gurukul-Isaac-Go2-APEX-Flat-Tracker-One-Step-Future-History-v0` | 5-frame history of the one-step tracker observation, `450` total observations. |
+| `b2_z1_arm_apex_flat_tracker_one_step_future_v0` | `Gurukul-Isaac-B2-Z1-Arm-APEX-Flat-Tracker-One-Step-Future-v0` | B2+Z1 one-step tracker over 18 action joints and 2 reference frames, `120` total observations. |
+| `b2_z1_arm_apex_flat_tracker_one_step_future_history_v0` | `Gurukul-Isaac-B2-Z1-Arm-APEX-Flat-Tracker-One-Step-Future-History-v0` | 5-frame B2+Z1 history over 18 action joints and 2 reference frames, `600` total observations. |
+
+The base YAML uses `go2_apex_base`; tracker YAMLs use `go2_apex_tracker` or `go2_apex_tracker_history`. At startup the
+runner validates:
+
+- `depth_camera` is disabled.
+- `motion_visualization.enabled` is true.
+- the base layout has exactly 46 observations, four command scales, and a 12-joint/action contract.
+- a policy with a known static ONNX input width matches the selected observation layout before inference.
+- for `go2_apex_tracker`, `num_obs == base_obs_dim + skill_dim + reference_frame_dim * len(reference_offsets)`.
+- for `go2_apex_tracker_history`, `num_obs == history_length * (base_obs_dim + skill_dim + reference_frame_dim * len(reference_offsets))`.
+  The history layout mirrors Isaac Lab's per-term observation history flattening: each term's oldest-to-newest history is
+  flattened before the next term is appended.
+
+For Go2, `base_obs_dim` is `46` and each reference frame contributes `22` terms: 12 joint positions, base linear
+velocity, base angular velocity, and base quaternion. For B2+Z1, `base_obs_dim` is `64` and each reference frame
+contributes `28` terms: 18 tracked B2+Z1 joint positions plus the same 10 base terms.
+Go2+D1 uses a `60`-term base and a `29`-term reference frame. The base contains 19 measured joint positions (12 legs,
+six rotary D1 joints, and the single physical gripper servo), 19 previous position-target actions, but only the 12 Go2
+leg velocities; D1 `dq` is excluded because the hardware arm interface reports measured angles but no deployable
+arm-velocity signal. Its extra scalar is the active NPZ `skill`, inserted
+between previous actions and reference motion to match Isaac Lab exactly. The bundled walk-then-wave clip therefore uses
+`60 + 1 + 5 * 29 = 206` actor observations.
+The Go2+D1 YAML makes this explicit with `actor_joint_velocity_indices: [0, ..., 11]`. The runner derives its base
+dimension from that list and rejects a policy/configuration whose declared observation count does not equal `206`, which
+prevents accidentally replaying the older 213-input full-arm-velocity policy.
+The tracker command slice uses the motion reference's world-frame vertical velocity for `vz`; keyboard/APEX command
+drive still controls only `vx`, `vy`, and yaw.
+The Go2 base and B2+Z1 tracker YAMLs leave `action_clip` unset to match their Isaac Lab tracker runners. Go2+D1 keeps a
+wide `6.0` raw-action safety bound in both Isaac Lab and MuJoCo. Together with the `0.25 rad` rotary-arm action scale,
+this covers the complete direct full-body target range in the bundled motions. B2+Z1 APEX one-step and history tracker
+YAMLs use the current `0.05 rad` arm action scale for `joint1..joint6`.
+B2+Z1 sim2sim also enables `arm_command`, which shapes MuJoCo `joint1..joint6` lowcmd targets like the real Z1
+deployment client: targets are clipped to Z1 joint limits, sampled on a `0.04 s` command period, limited to `0.05 rad`
+per period, linearly interpolated, and sent with a desired joint velocity. This keeps the MuJoCo command stream aligned
+with the hardware split path where B2 legs use `rt/lowcmd` and the Z1 arm is driven by `unitree_arm_interface`.
+Go2+D1 enables a pure sample-and-hold adapter for the seven-angle D1 packet. Policy inference and Go2 targets remain
+at `50 Hz`; J1--J6 and the physical gripper latch every `0.10 s`. The adapter does not add quantization, latency,
+interpolation, or an assumed firmware response.
+After action scaling and default-pose offset, the runner applies the same per-joint target bounds as Isaac Lab. In
+particular, the physical gripper target is clamped to `[0, 0.033] m`; sending a negative policy target into the MuJoCo
+hard stop and jaw-mimic constraint can shake the distal arm.
+
+When `--run` selects an exported checkpoint, the runner reads that run's `params/env.yaml` and uses its recorded
+`motion_file` unless `--motion-file` is provided explicitly. This prevents `--run latest` from silently feeding a
+wave-only policy the walk-then-wave reference configured as the YAML fallback.
+
+## Motion Clips
+
+The current Go2 tracker sim2sim config uses the new CrossMorpho clips:
+
+```text
+source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/cross_morpho_replay_added/*.npz
+```
+
+The MuJoCo tracker YAML mirrors that glob through `motion_visualization.motion_file`. Keep this aligned with the
+training config before judging transfer quality.
+
+Override the clip or glob from the CLI:
+
+```bash
+python RL_policy_runner/sim2sim/run_rl_policy.py \
+  --task go2_apex_flat_v0 \
+  --motion-file ../source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/animal_mocap/go2_retarget_trot.npz
+```
+
+When a glob contains multiple clips, keyboard control supports `N` and `P` to switch the active APEX reference motion.
+With a joystick, `X` switches to the next reference motion and `B` switches to the previous one.
+
+## Tracker Details
+
+<details>
+<summary>Open the tracker observation and control reference</summary>
+
+`go2_apex_flat_tracker_v0` uses reference offsets `(0, 1, 2, 5, 10)`. The one-step and one-step-history variants set
+`motion_visualization.reference_offsets: [0, 1]`. History variants keep a 5-frame rolling history of the one-step
+observation: Go2 uses `5 * 90 = 450` inputs and B2+Z1 uses `5 * 120 = 600` inputs. The flattened ONNX order is
+term-major, matching Isaac Lab observation history: `base_ang_vel` history, `projected_gravity` history, split command
+term histories, joint-position history, joint-velocity history, previous-action history, then reference-motion history.
+
+The tracker sim2sim configs also:
+
+- use CrossMorpho clips by default,
+- allow backward x commands down to `-1.0 m/s`,
+- leave policy action clipping disabled,
+- keep projected gravity enabled in the 46-D tracker base observation.
+
+APEX tracker sim2sim does not initialize the MuJoCo robot from the active reference state. It uses the normal Go2
+standup target before policy control. Isaac tracker training now uses reference-state initialization, so sim2sim remains
+a deployment-style rollout rather than an exact reset-state mirror for airborne jump phases.
+The B2 and B2+Z1 MuJoCo `home` keyframes store `qpos` in MuJoCo joint-declaration order and `ctrl` in actuator/sensor
+order; keep those orders separate when changing default poses. The MuJoCo reset height is `z=0.75` so the B2 feet start
+above the ground before stand-up.
+B2+Z1 tracker configs use the B2+Z1 deployment stand-to-policy handoff: a 5 s tanh stand-up ramp from measured joints
+to the default pose, with `kp` ramped from 60 to the configured standup gains, then direct policy control.
+After stand-up, the Z1 joints are not sent raw policy step targets in MuJoCo. The sim2sim runner applies the same
+deployment-style arm command adapter used by the B2+Z1 YAMLs before publishing lowcmd.
+
+The policy observation is built as the 46-D tracker actor layout followed by reference-motion features in offset order.
+The reference feature order matches `tracker_reference_params(...)` in the APEX tracker config: joint positions, base linear
+velocity, base angular velocity, then base quaternion.
+
+The Go2 tracker sim2sim YAMLs intentionally mirror the Isaac tracker control constants: `dt=0.005`, control decimation
+`4`, action scale `0.25`, no raw action clip, and position gains `kp=20.0`, `kd=0.5`.
+
+The Go2+D1 model lives under `unitree_mujoco/unitree_robots/go2_with_d1/`. It has 12 Go2 actuators, six D1 rotary
+actuators, and one gripper actuator; a MuJoCo equality constraint mirrors the second jaw. The APEX policy controls all
+19 motors. The bundled wave clips include an open-gripper position channel, while manipulation clips can command its
+full trajectory. D1 kinematics and limits come from Unitree's public D1-550 URDF. Its masses match the `3.152 kg`
+Isaac APEX overlay; Link1--Link3 retain the mass-scaled source tensors, while Link4--Link6 use the complete wrist-chain
+tensors from the [tactile-aware loco-manipulation asset](https://github.com/PokuangZhou/tactile-aware-quadrupedal-loco-manipulation/tree/285b3a50c0538bdfb15fddd12f37589e81fc5564).
+That asset models its fingers and tactile pads as separate child bodies, so those wrist tensors do not include its
+larger gripper; the associated setup is described in the [paper](https://arxiv.org/html/2604.27224).
+The gripper uses the same convention as Isaac and hardware: both jaw coordinates are `0 m` fully open and increase
+toward `0.033 m` when closing. The MuJoCo reset uses the measured fully-open D1 arm pose
+`[0, -90, 90, 0, 0, 0] deg`; J2 and J3 use the same exact `+/-90 deg` limits as Isaac.
+Isaac's render and collision fingers use the exact hardware/Viser `Empty_Link_L/R.STL` surfaces, with a frame conversion
+for the imported USD's Z-axis links; the zero-position inner-pad opening is therefore the same `66.3 mm` geometry used
+by the hardware URDF.
+The runner uses the same torque-limited servo baseline as training:
+`Kp=[200, 200, 200, 50, 50, 50]` and `Kd=[5, 5, 4, 0.25, 0.25, 0.25]` for the six rotary joints;
+the gripper uses `Kp=200`, `Kd=3`. Legs remain ordinary
+`default_angle + scale * action` targets for all 19 controlled joints. D1 J1–J6 and the physical gripper use scales of
+`0.25 rad` and `0.005 m`. The policy still produces all 19 targets at `50 Hz`, but the seven D1 channels consume the
+newest target only at `10 Hz` before the explicit MuJoCo PD law. This matches the Isaac and hardware command boundary;
+the original additive-DecAP prior exists only while training the teacher and is not part of the exported policy.
+Observations, reference phase, and policy inference retain one `20 ms` update boundary. The simulator/PD law runs at
+`200 Hz`, holding Go2 targets for four physics steps and D1 packet targets for twenty physics steps.
+
+MuJoCo also enables D1 contact against the Go2 and non-adjacent D1 links. Explicit parent-child exclusions match the
+filtered APEX USD, so an arm posture cannot pass through itself during sim2sim after being blocked during training.
+
+Record the arm target pipeline and measured state during a finite MuJoCo rollout:
+
+```bash
+python RL_policy_runner/sim2sim/run_rl_policy.py \
+  --task go2_velocity_flat_v0_with_d1_motion \
+  --launch-mujoco \
+  --duration 15 \
+  --arm-trace-log /tmp/go2_d1_arm_trace.npz
+```
+
+The trace contains the desired reference, filtered position command, command velocity, measured position/velocity,
+applied `Kp/Kd`, and estimated actuator torque for each configured arm motor.
+
+Training keeps the generic acceleration and torque penalties on the 12 leg joints. Rotary-arm acceleration is a
+separate, much weaker term because it measures the response of the explicit servo model; the metre-valued prismatic
+gripper is excluded from both rotary norms. Gripper target error is normalized by its action scale, so it cannot become
+numerically invisible next to errors measured in radians.
+The Go2+D1 YAML uses no static-PD warm-up: MuJoCo already starts at the motion's safe frame-zero ready pose, and the
+runner hands control directly to the policy. A stand-up target at the policy defaults would put D1 J2/J3 exactly on
+their `+/-90 deg` hard limits and can make the unloaded wrist chatter. The MuJoCo home keyframe also sets every motor
+`ctrl` value to zero: these are torque actuators, so copying home joint angles into `ctrl` would apply large unintended
+torques before the first DDS command. The simulator publishes the home low state but does not advance physics until
+the first valid DDS low command arrives; this prevents the low-inertia arm from collapsing during native-viewer
+startup. The runner polls for the first state at the physics rate, seeds the frame-zero motion command, and holds each
+policy result for the configured four MuJoCo steps, matching Isaac Lab's control decimation.
+
+</details>
+
+## Delta Diagnostics
+
+Use actor-observation/action delta logs before changing training noise or deployment filtering. Both Isaac playback and
+MuJoCo sim2sim can write matching `.npz` logs for env 0:
+
+```bash
+python scripts/reinforcement_learning/rsl_rl/play.py \
+  --task=Gurukul-Isaac-Go2-APEX-Flat-Tracker-One-Step-Future-v0 \
+  --num_envs 1 \
+  --max_steps 1000 \
+  --apex-delta-log /tmp/apex_isaac_delta.npz
+```
+
+```bash
+cd unitree-sim2real
+python RL_policy_runner/sim2sim/run_rl_policy.py \
+  --task go2_apex_flat_tracker_one_step_future_v0 \
+  --run latest \
+  --apex-delta-log /tmp/apex_sim2sim_delta.npz \
+  --apex-delta-log-steps 1000
+```
+
+Compare the logs from the repo root:
+
+```bash
+python scripts/tools/go2_apex/compare_tracker_delta_logs.py \
+  --isaac /tmp/apex_isaac_delta.npz \
+  --sim2sim /tmp/apex_sim2sim_delta.npz \
+  --plot /tmp/apex_delta_compare.svg
+```
+
+The logs include the tracker base actor slices (`base_ang_vel`, `projected_gravity`, `command`, `joint_pos`,
+`joint_vel`, `prev_action`, and optional `skill`), tracker reference slices (`reference_joint_pos`, `reference_base_lin_vel`,
+`reference_base_ang_vel`, `reference_quat`), and policy `action`. If sim2sim has larger per-step max deltas in the
+reference or command slices, the runner motion stepping or observation interface is mismatched. If the deltas match but
+sim2sim is still unstable, debug dynamics, gains, action scaling, or policy robustness before adding deployment-only
+smoothing.
+
+Tracker robustness uses noisy actor reference observations, larger proprioception noise on base angular
+velocity/projected gravity/joint states, actuator gain randomization, frequent linear and angular pushes, direct
+pre-prior target supervision, and joint-group action regularization. The D1 setpoint response is part of both training
+and sim2sim rather than a deployment-only patch. Neither path adds a hard arm target-velocity cap.
+
+## Viser Behavior
+
+The runner passes task-specific viewer flags to the launched MuJoCo process:
+
+- depth camera and point cloud are enabled only when the YAML has `depth_camera.enabled: true`;
+- APEX reference-foot markers are enabled only when `motion_visualization.enabled: true`;
+- APEX reference-foot markers are sent as yaw/body-frame offsets and drawn at the current MuJoCo base pose;
+- APEX tracker viser runs do not show the depth preview or depth point cloud.
+
+This keeps locomotion depth sim2sim unchanged while making APEX tracker playback specific to APEX.
+
+## Unsupported APEX Paths
+
+The Go2 APEX depth distillation and depth action-prior tasks use Isaac Lab training/playback paths. They do not have
+maintained MuJoCo YAMLs in this repository.
+
+The Go2+D1 entry on this page covers the APEX tracker. The separate velocity, WBC, and loco-manipulation task families
+need their own policy observation adapters and, for manipulation, object scenes; they are not exposed as sim2sim runner
+tasks yet.

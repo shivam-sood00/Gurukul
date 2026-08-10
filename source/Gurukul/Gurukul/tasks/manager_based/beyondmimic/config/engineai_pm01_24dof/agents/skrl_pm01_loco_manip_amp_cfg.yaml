@@ -1,0 +1,94 @@
+seed: 42
+
+models:
+  separate: True
+  policy:
+    class: GaussianMixin
+    clip_actions: False
+    clip_log_std: True
+    min_log_std: -20.0
+    max_log_std: 2.0
+    initial_log_std: -2.9
+    fixed_log_std: True
+    network:
+      - name: net
+        input: OBSERVATIONS
+        layers: [1024, 512]
+        activations: relu
+    output: ACTIONS
+  value:
+    class: DeterministicMixin
+    clip_actions: False
+    network:
+      - name: net
+        input: OBSERVATIONS
+        layers: [1024, 512]
+        activations: relu
+    output: ONE
+  discriminator:
+    class: DeterministicMixin
+    clip_actions: False
+    network:
+      - name: net
+        input: OBSERVATIONS
+        layers: [1024, 512]
+        activations: relu
+    output: ONE
+
+memory:
+  class: RandomMemory
+  memory_size: -1
+
+motion_dataset:
+  class: RandomMemory
+  memory_size: 200000
+
+reply_buffer:
+  class: RandomMemory
+  memory_size: 100000
+
+agent:
+  class: AMP
+  rollouts: 16
+  learning_epochs: 6
+  mini_batches: 2
+  discount_factor: 0.99
+  lambda: 0.95
+  learning_rate: 4.0e-06
+  learning_rate_scheduler: KLAdaptiveLR
+  learning_rate_scheduler_kwargs:
+    kl_threshold: 0.008
+  state_preprocessor: RunningStandardScaler
+  state_preprocessor_kwargs: null
+  value_preprocessor: RunningStandardScaler
+  value_preprocessor_kwargs: null
+  amp_state_preprocessor: RunningStandardScaler
+  amp_state_preprocessor_kwargs: null
+  random_timesteps: 0
+  learning_starts: 0
+  grad_norm_clip: 0.0
+  ratio_clip: 0.2
+  value_clip: 0.2
+  clip_predicted_values: True
+  entropy_loss_scale: 0.02
+  value_loss_scale: 2.5
+  discriminator_loss_scale: 5.0
+  amp_batch_size: 256
+  task_reward_weight: 0.5
+  style_reward_weight: 0.5
+  discriminator_batch_size: 256
+  discriminator_reward_scale: 2.0
+  discriminator_logit_regularization_scale: 0.05
+  discriminator_gradient_penalty_scale: 10.0
+  discriminator_weight_decay_scale: 1.0e-04
+  time_limit_bootstrap: False
+  experiment:
+    directory: "engineai_pm01_loco_manip_amp"
+    experiment_name: ""
+    write_interval: auto
+    checkpoint_interval: 10000
+
+trainer:
+  class: SequentialTrainer
+  timesteps: 100000000
+  environment_info: log

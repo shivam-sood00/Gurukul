@@ -1,0 +1,33 @@
+x-default-gurukul-environment: &default-gurukul-environment
+  - OMNI_KIT_ALLOW_ROOT=1
+
+x-default-gurukul-deploy: &default-gurukul-deploy
+  resources:
+    reservations:
+      devices:
+        - driver: nvidia
+          count: all
+          capabilities: [ gpu ]
+
+services:
+  gurukul:
+    env_file: .env.base
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+      args:
+        - ISAACLAB_BASE_IMAGE_ARG=${ISAACLAB_BASE_IMAGE}
+        - DOCKER_ISAACLAB_EXTENSION_TEMPLATE_PATH_ARG=${DOCKER_ISAACLAB_EXTENSION_TEMPLATE_PATH}
+    image: gurukul
+    container_name: gurukul
+    volumes:
+      - type: bind
+        source: ../
+        target: ${DOCKER_ISAACLAB_EXTENSION_TEMPLATE_PATH}
+    network_mode: host
+    environment: *default-gurukul-environment
+    deploy: *default-gurukul-deploy
+    # This is the entrypoint for the container
+    entrypoint: bash
+    stdin_open: true
+    tty: true

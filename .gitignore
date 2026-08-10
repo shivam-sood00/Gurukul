@@ -1,0 +1,95 @@
+# Omniverse
+**/*.dmp
+**/.thumbs
+
+# Python
+.DS_Store
+**/*.egg-info/
+**/__pycache__/
+**/.pytest_cache/
+**/*.pyc
+**/*.pb
+
+# IDE
+**/.idea/
+**/.vscode/
+# Don't ignore the top-level .vscode directory as it is
+# used to configure VS Code settings
+!/.vscode/
+
+# Outputs
+**/runs/*
+**/logs/*
+**/log/*
+*.log
+**/MUJOCO_LOG.TXT
+**/build/*
+**/install/*
+**/recordings/*
+**/output/*
+**/outputs/*
+**/videos/*
+**/wandb/*
+**/.neptune/*
+docker/artifacts/
+*.tmp
+*.npz
+!unitree-sim2real/RL_policy_runner/sim2real/apex_tracker_motions/
+!unitree-sim2real/RL_policy_runner/sim2real/apex_tracker_motions/*.npz
+
+# Optional or redistribution-restricted research material. Keep local copies in
+# these paths, but do not include them in the public repository. Installation
+# sources and expected destinations are documented in
+# website/docs/getting-started/optional-assets.md.
+/third_party/OmniPerception/
+/source/Gurukul/Gurukul/assets/lidar.py
+/source/Gurukul/Gurukul/assets/omni_perception.py
+/source/Gurukul/Gurukul/assets/realistic_lidar.py
+/source/Gurukul/Gurukul/assets/lidar_patterns/
+# Gurukul's Go2+D1 task code, MuJoCo XML, and small USD correction layers are
+# public. Keep only Unitree's downloaded D1 geometry and USDs that embed that
+# geometry local until the source archive provides a complete license notice.
+/source/Gurukul/data/Robots/unitree/go2_with_d1/meshes/d1/
+/source/Gurukul/data/Robots/unitree/go2_with_d1/urdf/go2_d1_vis.urdf
+/source/Gurukul/data/Robots/unitree/go2_with_d1/usd/d1/
+/source/Gurukul/data/Robots/unitree/go2_with_d1/usd/*.usd
+/source/Gurukul/data/Robots/unitree/go2_with_d1/usd/go2_d1_center_contact_pad_flat_corrected.usda
+/unitree-sim2real/unitree_mujoco/unitree_robots/go2_with_d1/assets/
+# The Gurukul-authored Go2+D1 APEX motions are public. Other APEX motion
+# collections have separate or incomplete source-data terms and remain local.
+/source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/imitation_data/*
+!/source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/imitation_data/go2_d1_motions_csv/
+/source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/*
+!/source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/go2_d1/
+!/source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/go2_d1/.gitkeep
+!/source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/go2_d1/*.npz
+/source/Gurukul/Gurukul/tasks/manager_based/beyondmimic/config/g1/motion/*.csv
+/source/Gurukul/Gurukul/tasks/direct/g1_amp/motions/*.csv
+
+# Isaac-Sim packman
+_isaac_sim*
+_repo
+_build
+.lastformat
+
+# LSP
+pyrightconfig.json
+cursor-sandbox-apparmor.deb
+/.codex
+/.codex/
+/tmp/
+mindmaps
+media/
+artifacts
+Presentation/
+/.cache/
+source/robot_lab/robot_lab/tasks/manager_based/go2_apex/config/go2/motion/imitation_data/learn_diverse_quad_loco/
+source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/cross_morpho.zip
+
+# Documentation website
+website/node_modules/
+website/.docusaurus/
+!website/static/videos/
+!website/static/videos/.gitkeep
+knowledge
+unitree-sim2real/UnitreeB2_Z1_Deployment

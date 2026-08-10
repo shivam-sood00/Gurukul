@@ -1,0 +1,57 @@
+---
+title: Motion Tracking
+description: Motion-imitation and reference-conditioned tracking tasks for supported robot families.
+---
+
+# Motion Tracking
+
+:::info[Available paths]
+The task family includes Isaac Lab training paths, selected APEX and EngineAI MuJoCo runners, and hardware handoff
+documentation for supported APEX platforms. Open the robot or transfer page for the exact tested contract; support does
+not apply uniformly to every motion-tracking task.
+:::
+
+Motion tracking tasks train policies against reference motion clips, future reference observations, or motion-imitation
+rewards. APEX and BeyondMimic are the implemented training methods for this task family.
+
+## Methods
+
+| Method | What it covers |
+| --- | --- |
+| [APEX](../go2-apex) | Concept, policy interface, and page map for the implemented motion-tracking family. |
+| [BeyondMimic](../beyondmimic/overview) | Reference-motion PPO tasks for Unitree G1, EngineAI PM01, and EngineAI T800. |
+
+Use [Motion Tracking Methods](../../training-methods/motion-tracking) to compare the two method families. APEX training,
+motion-data, Sim2Sim, and Sim2Real pages are kept together beneath APEX because all four share its reference and policy
+interface. BeyondMimic transfer commands stay on the matching robot page for the same reason.
+
+## Implementations
+
+- Go2 APEX motion-imitation and tracker configs live under `source/Gurukul/Gurukul/tasks/manager_based/go2_apex/`.
+- G1 APEX/BeyondMimic tracker configs live under `source/Gurukul/Gurukul/tasks/manager_based/beyondmimic/config/g1/`.
+- The direct G1 dance task is an experimental dense-tracking + AMP-discriminator hybrid registered as
+  `Gurukul-Isaac-G1-AMP-Dance-Direct-v0`; it is not a pure reproduction of the AMP paper.
+- EngineAI PM01 has official 24-action dance BeyondMimic configs under
+  `source/Gurukul/Gurukul/tasks/manager_based/beyondmimic/config/`.
+- EngineAI T800 BeyondMimic config and official policy artifacts live under `source/Gurukul/Gurukul/tasks/manager_based/beyondmimic/config/engineai_t800/`.
+- Go2+D1 APEX tracker variants extend the Go2 reference interface with D1 arm reference joints.
+
+The direct G1 AMP task clips normalized actions to `[-1, 1]` and maps that range exactly to the soft joint limits.
+Reference rewards and the policy phase advance from the same sampled motion-time offset after randomized resets.
+Non-looping episodes end before another policy step would exceed the reference clip, and every reset reseeds AMP history
+so discriminator inputs never span two episodes.
+
+Use [BeyondMimic](../beyondmimic/overview) for G1, PM01, and T800 setup, training, playback, and EngineAI sim2sim. Use
+[APEX Training](../apex/training) for Go2/B2+Z1 task IDs, notes, and task-specific playback behavior.
+
+## Method References
+
+- [Adversarial Motion Priors for Stylized Physics-Based Character Control](https://arxiv.org/abs/2104.02180)
+- [Upstream-derived `robot_lab` G1 AMP task](https://github.com/fan-ziqi/robot_lab/tree/main/source/robot_lab/robot_lab/tasks/direct/g1_amp)
+- [BeyondMimic](https://arxiv.org/abs/2508.08241)
+- [APEX](https://arxiv.org/abs/2511.09091) and its
+  [official implementation](https://github.com/marmotlab/APEX)
+- [DecAP](https://arxiv.org/abs/2310.05714)
+
+The local hybrid is registered and agent-configured with tensor-level tests. No bundled trained checkpoint,
+convergence result, sim2sim adapter, or hardware validation is claimed; see the [exact task-stage catalog](../../reference/task-status).

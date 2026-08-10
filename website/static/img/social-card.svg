@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#081319"/>
+  <path d="M120 430h440M180 310h320M245 220h190" stroke="#20c4b8" stroke-width="28" stroke-linecap="round"/>
+  <circle cx="220" cy="500" r="42" fill="#78c56e"/>
+  <circle cx="470" cy="500" r="42" fill="#e1a83a"/>
+  <text x="650" y="270" fill="#f7fbfb" font-family="Inter, Arial, sans-serif" font-size="76" font-weight="800">Gurukul</text>
+  <text x="650" y="350" fill="#a9b7bc" font-family="Inter, Arial, sans-serif" font-size="34">Robot learning in Isaac Lab</text>
+  <text x="650" y="400" fill="#a9b7bc" font-family="Inter, Arial, sans-serif" font-size="26">Locomotion · tracking · manipulation · transfer</text>
+</svg>

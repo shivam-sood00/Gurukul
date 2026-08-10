@@ -1,0 +1,174 @@
+:root {
+  --ifm-color-primary: #168e86;
+  --ifm-color-primary-dark: #137f78;
+  --ifm-color-primary-darker: #11756f;
+  --ifm-color-primary-darkest: #0d5c57;
+  --ifm-color-primary-light: #1fa69d;
+  --ifm-color-primary-lighter: #25b9af;
+  --ifm-color-primary-lightest: #3bd2c8;
+  --ifm-font-family-base:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ifm-heading-font-family: var(--ifm-font-family-base);
+  --ifm-code-font-size: 92%;
+  --ifm-navbar-height: 4rem;
+  --mst-cyan: #20c4b8;
+  --mst-green: #78c56e;
+  --mst-amber: #e1a83a;
+  --mst-violet: #9d8cff;
+  --mst-muted: #65737a;
+  --mst-border: rgba(20, 40, 47, 0.14);
+  --mst-surface: #ffffff;
+  --mst-band: #f3f7f7;
+  --mst-shadow: 0 18px 44px rgba(8, 19, 25, 0.08);
+}
+
+[data-theme='dark'] {
+  --ifm-background-color: #081319;
+  --ifm-navbar-background-color: #0c1a21;
+  --ifm-footer-background-color: #071014;
+  --mst-muted: #a9b7bc;
+  --mst-border: rgba(220, 246, 246, 0.14);
+  --mst-surface: #0f2028;
+  --mst-band: #0c1a21;
+  --mst-shadow: 0 18px 44px rgba(0, 0, 0, 0.24);
+}
+
+.navbar {
+  border-bottom: 1px solid var(--mst-border);
+}
+
+.button {
+  border-radius: 7px;
+}
+
+.button--outline {
+  color: #f7fbfb;
+  border-color: rgba(247, 251, 251, 0.55);
+}
+
+.button--outline:hover {
+  color: #081319;
+  background: #f7fbfb;
+}
+
+.markdown img {
+  border-radius: 8px;
+}
+
+.markdown h1 {
+  overflow-wrap: anywhere;
+}
+
+.markdown details {
+  margin: 1rem 0 1.5rem;
+  border: 1px solid var(--mst-border);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  background: var(--mst-surface);
+}
+
+.markdown details > summary {
+  cursor: pointer;
+  color: var(--ifm-font-color-base);
+  font-weight: 700;
+}
+
+.markdown details[open] > summary {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--mst-border);
+}
+
+.markdown details > :last-child {
+  margin-bottom: 0;
+}
+
+.notebook-notes {
+  --notebook-paper: #fffdf7;
+  --notebook-line: rgba(34, 116, 150, 0.16);
+  --notebook-rule: rgba(211, 87, 87, 0.28);
+  --notebook-hole: rgba(20, 40, 47, 0.16);
+  position: relative;
+  overflow: hidden;
+  margin: 1.15rem 0 2rem;
+  padding-left: 2.85rem;
+  border: 1px solid rgba(20, 40, 47, 0.16);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 1.05rem 2.25rem, var(--notebook-hole) 0 0.19rem, transparent 0.2rem),
+    radial-gradient(circle at 1.05rem 5.25rem, var(--notebook-hole) 0 0.19rem, transparent 0.2rem),
+    radial-gradient(circle at 1.05rem 8.25rem, var(--notebook-hole) 0 0.19rem, transparent 0.2rem),
+    linear-gradient(90deg, transparent 0 2.2rem, var(--notebook-rule) 2.2rem 2.28rem, transparent 2.28rem),
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 1.58rem,
+      var(--notebook-line) 1.58rem calc(1.58rem + 1px),
+      transparent calc(1.58rem + 1px) 1.92rem
+    ),
+    var(--notebook-paper);
+  box-shadow: 0 18px 36px rgba(8, 19, 25, 0.09);
+}
+
+.notebook-notes::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 3rem;
+  height: 3rem;
+  content: "";
+  background: linear-gradient(135deg, rgba(20, 40, 47, 0.1) 0 50%, rgba(255, 255, 255, 0.75) 51% 100%);
+  border-bottom-left-radius: 8px;
+  pointer-events: none;
+}
+
+.notebook-notes [class*='admonitionHeading'] {
+  color: #23444c;
+  font-weight: 700;
+}
+
+.notebook-notes [class*='admonitionIcon'] {
+  color: var(--ifm-color-primary);
+}
+
+.notebook-notes code {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+[data-theme='dark'] .notebook-notes {
+  --notebook-paper: #13242c;
+  --notebook-line: rgba(119, 199, 206, 0.14);
+  --notebook-rule: rgba(241, 132, 132, 0.32);
+  --notebook-hole: rgba(224, 246, 246, 0.2);
+  border-color: rgba(220, 246, 246, 0.16);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
+}
+
+[data-theme='dark'] .notebook-notes::after {
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.24) 0 50%, rgba(255, 255, 255, 0.08) 51% 100%);
+}
+
+[data-theme='dark'] .notebook-notes [class*='admonitionHeading'] {
+  color: #d7eeee;
+}
+
+[data-theme='dark'] .notebook-notes code {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.notebook-notes details {
+  background: rgba(255, 255, 255, 0.42);
+}
+
+[data-theme='dark'] .notebook-notes details {
+  background: rgba(0, 0, 0, 0.16);
+}
+
+@media (max-width: 576px) {
+  .markdown h1 {
+    font-size: 2rem;
+  }
+
+  .notebook-notes {
+    padding-left: 2.35rem;
+  }
+}

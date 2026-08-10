@@ -1,0 +1,64 @@
+<mujoco model="go2 stairs scene">
+  <include file="go2.xml"/>
+
+  <statistic center="0 0 0.2" extent="1.2"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="-130" elevation="-20"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
+    <texture type="2d" name="groundplane" builtin="checker" mark="edge"
+      rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3" markrgb="0.8 0.8 0.8" width="300" height="300"/>
+    <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0.2"/>
+    <material name="platform" rgba="0.35 0.35 0.35 1"/>
+    <material name="stair_up" rgba="0.30 0.45 0.70 1"/>
+    <material name="stair_down" rgba="0.70 0.45 0.30 1"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
+    <!-- Terrain contact tuning: stiffer contact + small margin reduces apparent sink at sharp edges. -->
+    <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"
+      friction="1.0 0.03 0.01" condim="6" margin="0.004" solref="0.003 1" solimp="0.95 0.99 0.001" priority="2"/>
+
+    <!-- Flat start platform (ends exactly at x=2.08, where level_01 begins) -->
+    <geom name="start_pad" type="box" pos="1.75 0 0.03" size="0.33 3.5 0.03" material="platform"
+      friction="1.0 0.03 0.01" condim="6" margin="0.004" solref="0.003 1" solimp="0.95 0.99 0.001" priority="2"/>
+
+    <!-- Collision stairs: one slab per height level (removes internal seam catch points). -->
+    <geom name="level_01" type="box" pos="2.32 0 0.03"  size="0.24 3.5 0.03"  material="platform"
+      friction="1.0 0.03 0.01" condim="6" margin="0.004" solref="0.003 1" solimp="0.95 0.99 0.001" priority="2"/>
+    <geom name="level_02" type="box" pos="2.80 0 0.055" size="0.24 3.5 0.055" material="platform"
+      friction="1.0 0.03 0.01" condim="6" margin="0.004" solref="0.003 1" solimp="0.95 0.99 0.001" priority="2"/>
+    <geom name="level_03" type="box" pos="3.28 0 0.09"  size="0.24 3.5 0.09"  material="platform"
+      friction="1.0 0.03 0.01" condim="6" margin="0.004" solref="0.003 1" solimp="0.95 0.99 0.001" priority="2"/>
+    <geom name="level_04" type="box" pos="3.76 0 0.13"  size="0.24 3.5 0.13"  material="platform"
+      friction="1.0 0.03 0.01" condim="6" margin="0.004" solref="0.003 1" solimp="0.95 0.99 0.001" priority="2"/>
+    <geom name="level_05" type="box" pos="4.24 0 0.175" size="0.24 3.5 0.175" material="platform"
+      friction="1.0 0.03 0.01" condim="6" margin="0.004" solref="0.003 1" solimp="0.95 0.99 0.001" priority="2"/>
+    <geom name="level_06" type="box" pos="4.72 0 0.225" size="0.24 3.5 0.225" material="platform"
+      friction="1.0 0.03 0.01" condim="6" margin="0.004" solref="0.003 1" solimp="0.95 0.99 0.001" priority="2"/>
+
+    <!-- Visual-only stripe overlay (no collision). -->
+    <geom name="up_01_vis" type="box" pos="2.20 0 0.061"  size="0.12 3.5 0.001" material="stair_up"   contype="0" conaffinity="0"/>
+    <geom name="down_01_vis" type="box" pos="2.44 0 0.061"  size="0.12 3.5 0.001" material="stair_down" contype="0" conaffinity="0"/>
+    <geom name="up_02_vis" type="box" pos="2.68 0 0.111"  size="0.12 3.5 0.001" material="stair_up"   contype="0" conaffinity="0"/>
+    <geom name="down_02_vis" type="box" pos="2.92 0 0.111"  size="0.12 3.5 0.001" material="stair_down" contype="0" conaffinity="0"/>
+    <geom name="up_03_vis" type="box" pos="3.16 0 0.181"  size="0.12 3.5 0.001" material="stair_up"   contype="0" conaffinity="0"/>
+    <geom name="down_03_vis" type="box" pos="3.40 0 0.181"  size="0.12 3.5 0.001" material="stair_down" contype="0" conaffinity="0"/>
+    <geom name="up_04_vis" type="box" pos="3.64 0 0.261"  size="0.12 3.5 0.001" material="stair_up"   contype="0" conaffinity="0"/>
+    <geom name="down_04_vis" type="box" pos="3.88 0 0.261"  size="0.12 3.5 0.001" material="stair_down" contype="0" conaffinity="0"/>
+    <geom name="up_05_vis" type="box" pos="4.12 0 0.351"  size="0.12 3.5 0.001" material="stair_up"   contype="0" conaffinity="0"/>
+    <geom name="down_05_vis" type="box" pos="4.36 0 0.351"  size="0.12 3.5 0.001" material="stair_down" contype="0" conaffinity="0"/>
+    <geom name="up_06_vis" type="box" pos="4.60 0 0.451"  size="0.12 3.5 0.001" material="stair_up"   contype="0" conaffinity="0"/>
+    <geom name="down_06_vis" type="box" pos="4.84 0 0.451"  size="0.12 3.5 0.001" material="stair_down" contype="0" conaffinity="0"/>
+
+    <!-- Top landing at final level -->
+    <geom name="landing" type="box" pos="5.18 0 0.225" size="0.22 3.5 0.225" material="platform"
+      friction="1.0 0.03 0.01" condim="6" margin="0.004" solref="0.003 1" solimp="0.95 0.99 0.001" priority="2"/>
+  </worldbody>
+</mujoco>

@@ -1,0 +1,46 @@
+---
+title: BeyondMimic
+description: Whole-body reference tracking and PM01 DeepMimic/AMP loco-manipulation tasks.
+maturity: experimental
+targets:
+  - sim
+---
+
+import StatusBadges from '@site/src/components/StatusBadges';
+
+# BeyondMimic
+
+<StatusBadges
+  maturity="experimental"
+  targets={['sim']}
+  note="PM01 has a 24-action imported dance policy; T800 has 25 actions. Transfer support is variant-specific."
+/>
+
+BeyondMimic tasks train a policy to preserve whole-body motion while satisfying a task in Isaac Lab. This repository
+provides the shared reference tracker for Unitree G1, EngineAI PM01, and EngineAI T800, plus PM01 object-interaction
+variants that use explicit DeepMimic tracking or an adversarial motion prior.
+
+## Robots
+
+| Robot | Included path | Page |
+| --- | --- | --- |
+| Unitree G1 | Tasks are registered; install a permitted source motion and generate the configured NPZ before training. | [G1](g1) |
+| EngineAI PM01 | Includes EngineAI's official 24-action asset, dance checkpoint, exports, MuJoCo adapter, and tabletop/heavy-push tasks; motion NPZs are installed locally. | [PM01](pm01) |
+| EngineAI T800 | Includes a 25-action asset, checkpoint, exports, and a MuJoCo path requiring the external native SDK; the motion NPZ is installed locally. | [T800](t800) |
+
+The shared implementation lives under:
+
+```text
+source/Gurukul/Gurukul/tasks/manager_based/beyondmimic/
+```
+
+## Method Scope
+
+The reference-tracking task family is inspired by [BeyondMimic: From Motion Tracking to Versatile Humanoid Control via Guided
+Diffusion](https://arxiv.org/abs/2508.08241). The code in this repository implements the reference-motion tracking
+environment and PPO policies. It does not currently implement the paper's guided-diffusion controller. PM01's
+loco-manipulation variants separately implement the reward decomposition from
+[DeepMimic](https://arxiv.org/abs/1804.02717) and the adversarial style prior from
+[AMP](https://arxiv.org/abs/2104.02180).
+
+Use the robot pages for the exact task IDs, motion prerequisites, and commands.

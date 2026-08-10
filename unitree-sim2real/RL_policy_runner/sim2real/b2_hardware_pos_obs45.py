@@ -1,0 +1,363 @@
+import os
+import time
+import sys
+from pathlib import Path
+
+import numpy as np
+import onnxruntime as ort
+from unitree_sdk2py.core.channel import ChannelPublisher
+from unitree_sdk2py.core.channel import ChannelSubscriber, ChannelFactoryInitialize
+from unitree_sdk2py.idl.default import unitree_go_msg_dds__LowCmd_
+from unitree_sdk2py.idl.unitree_go.msg.dds_ import LowCmd_, LowState_, WirelessController_
+from unitree_sdk2py.utils.crc import CRC
+from unitree_sdk2py.comm.motion_switcher.motion_switcher_client import MotionSwitcherClient
+from unitree_sdk2py.go2.sport.sport_client import SportClient
+
+
+def quat_to_rot(quat):
+    w, x, y, z = quat
+    R = np.array([
+        [1 - 2 * (y ** 2 + z ** 2), 2 * (x * y - w * z), 2 * (x * z + w * y)],
+        [2 * (x * y + w * z), 1 - 2 * (x ** 2 + z ** 2), 2 * (y * z - w * x)],
+        [2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x ** 2 + y ** 2)]
+    ])
+    return R
+
+
+class RLController(object):
+    # Gurukul B2 deploy order and the Unitree B2 SDK/MuJoCo order are both:
+    # FR, FL, RR, RL
+    default_joint_angles = {
+        'FR_hip_joint': 0.0, 'FR_thigh_joint': 0.8, 'FR_calf_joint': -1.5,
+        'FL_hip_joint': 0.0, 'FL_thigh_joint': 0.8, 'FL_calf_joint': -1.5,
+        'RR_hip_joint': 0.0, 'RR_thigh_joint': 0.8, 'RR_calf_joint': -1.5,
+        'RL_hip_joint': 0.0, 'RL_thigh_joint': 0.8, 'RL_calf_joint': -1.5,
+    }
+    default_joint_angles = np.array(list(default_joint_angles.values()), dtype=np.float32)
+    mapping = list(range(12))
+    mapping_contact = [1, 0, 3, 2]
+    frequency = 200.0
+    dof_vel_limits = np.array([23, 23, 14, 23, 23, 14, 23, 23, 14, 23, 23, 14], dtype=np.float32)
+    action_scale = 0.25
+    hip_action_scale = 0.125
+    hip_joint_indices = [0, 3, 6, 9]
+    torque_limit = 320.0
+    kps = np.array([160.0, 160.0, 160.0, 160.0, 160.0, 160.0, 160.0, 160.0, 160.0, 160.0, 160.0, 160.0], dtype=np.float32)
+    kds = np.array([5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0], dtype=np.float32)
+    stand_kps = np.array([350.0, 350.0, 350.0, 350.0, 350.0, 350.0, 350.0, 350.0, 350.0, 350.0, 350.0, 350.0], dtype=np.float32)
+    key_state = [
+        ["R1", 0], ["L1", 0], ["start", 0], ["select", 0], ["R2", 0], ["L2", 0], ["F1", 0], ["F2", 0], ["A", 0],
+        ["B", 0], ["X", 0], ["Y", 0], ["up", 0], ["right", 0], ["down", 0], ["left", 0],
+    ]
+    key_index = {name: idx for idx, (name, _) in enumerate(key_state)}
+
+    # Export this from `unitree_b2_flat` and either place it here or override with GURUKUL_POLICY_PATH.
+    actor_path = 'policy_b2_flat_walking.onnx'
+
+    class obs_scales:
+        lin_vel = 1.0
+        ang_vel = 0.25
+        dof_pos = 1.0
+        dof_vel = 0.05
+        height_measurements = 5.0
+
+    def __init__(self):
+        self.low_state = None
+        # create subscriber and publisher
+        self.low_state_suber = ChannelSubscriber("rt/lowstate", LowState_)
+        self.low_state_suber.Init(self.LowStateHandler, 10)
+        self.low_cmd_puber = ChannelPublisher("rt/lowcmd", LowCmd_)
+        self.low_cmd_puber.Init()
+        self.wireless_controller_suber = ChannelSubscriber("rt/wirelesscontroller", WirelessController_)
+        self.wireless_controller_suber.Init(self.WirelessControllerHandler, 10)
+        print('Creat subscriber and publisher')
+        # load policy
+        self.interval = 1.0 / self.frequency
+        self.actor = self.load_policy()
+        self.actor_input_name = self.actor.get_inputs()[0].name
+        self.actor_output_name = self.actor.get_outputs()[0].name
+        self.actor_input_shape = self.actor.get_inputs()[0].shape
+        # prepare obs and actions
+        self.step_count = 0
+        self.command = np.array([[0.0, 0, 0]], dtype=np.float32)
+        self.lin_vel = np.zeros((1, 3), dtype=np.float32)
+        self.ang_vel = np.zeros((1, 3), dtype=np.float32)
+        self.projected_gravity = np.zeros((1, 3), dtype=np.float32)
+        self.dof_pos = np.zeros((1, 12), dtype=np.float32)
+        self.dof_vel = np.zeros((1, 12), dtype=np.float32)
+        self.torques = np.zeros((1, 12), dtype=np.float32)
+        self.torques_est = np.zeros((1, 12), dtype=np.float32)
+        self.activation_sign = np.zeros((1, 12), dtype=np.float32)
+        self.motor_fatigue = np.zeros((1, 12), dtype=np.float32)
+        self.motor_fatigue_est = np.zeros((1, 12), dtype=np.float32)
+        # self.estimator_obs = np.zeros((1, 330), dtype=np.float32)
+        self.prev_action = np.zeros((1, 12), dtype=np.float32)
+        self.control_decimation = 4
+        self.loop_counter = 0
+        self.current_action = np.zeros((1, 12), dtype=np.float32)
+        self.current_torques = np.zeros(12, dtype=np.float32)
+        self.action_scales = np.full((1, 12), self.action_scale, dtype=np.float32)
+        for hip_idx in self.hip_joint_indices:
+            self.action_scales[0, hip_idx] = self.hip_action_scale
+
+        # Pre-allocate buffers for get_obs to avoid repeated allocations
+        self.commands_scaled = np.zeros((1, 3), dtype=np.float32)
+        self.scaled_ang_vel = np.zeros((1, 3), dtype=np.float32)
+        self.gravity_vec = np.array([0, 0, -1], dtype=np.float32)
+
+        self.cmd_limits = {
+            'lin_vel_x': [-1.0, 1.0],
+            'lin_vel_y': [-1.0, 1.0],
+            'ang_vel_z': [-1.0, 1.0],
+        }
+
+        self.crc = CRC()
+        self.cmd = unitree_go_msg_dds__LowCmd_()
+        self.cmd.head[0] = 0xFE
+        self.cmd.head[1] = 0xEF
+        self.cmd.level_flag = 0xFF
+        self.cmd.gpio = 0
+
+        self.j_lx, self.j_ly, self.j_rx, self.j_ry = 0, 0, 0, 0
+
+        for i in range(20):
+            self.cmd.motor_cmd[i].mode = 0x01  # (PMSM) mode
+            self.cmd.motor_cmd[i].q = 0.0
+            self.cmd.motor_cmd[i].kp = 0.0
+            self.cmd.motor_cmd[i].dq = 0.0
+            self.cmd.motor_cmd[i].kd = 0.0
+            self.cmd.motor_cmd[i].tau = 0.0
+
+        self.sc = SportClient()
+        self.sc.SetTimeout(5.0)
+        self.sc.Init()
+
+        self.msc = MotionSwitcherClient()
+        self.msc.SetTimeout(5.0)
+        self.msc.Init()
+
+        status, result = self.msc.CheckMode()
+        mode_name = result.get('name', '') if isinstance(result, dict) else ''
+        if not isinstance(result, dict):
+            print(
+                "[WARN] MotionSwitcher CheckMode returned no mode info "
+                f"(status={status}, result={result}). "
+                "If using hardware, start with a NIC argument (example: eth0)."
+            )
+
+        while mode_name:
+            self.sc.StandDown()
+            self.msc.ReleaseMode()
+            status, result = self.msc.CheckMode()
+            mode_name = result.get('name', '') if isinstance(result, dict) else ''
+            if not isinstance(result, dict):
+                print(
+                    "[WARN] MotionSwitcher CheckMode failed during mode release "
+                    f"(status={status}, result={result}). Continuing."
+                )
+                break
+            time.sleep(1)
+
+        if not self.wait_for_low_state(5.0):
+            raise RuntimeError("No rt/lowstate messages received. Check the robot/simulator connection.")
+
+        self.stand_up()
+
+    def get_obs(self):
+        self.ang_vel[0, :] = [
+            self.low_state.imu_state.gyroscope[0],
+            self.low_state.imu_state.gyroscope[1],
+            self.low_state.imu_state.gyroscope[2]
+        ]
+        rot_matrix = quat_to_rot(self.low_state.imu_state.quaternion)
+        self.projected_gravity[0] = rot_matrix.T @ self.gravity_vec
+
+        dof_info = np.array(list(map(lambda x: x, self.low_state.motor_state))[:12])
+        for i in range(12):
+            self.dof_pos[0, self.mapping[i]] = dof_info[i].q - self.default_joint_angles[self.mapping[i]]
+            self.dof_vel[0, self.mapping[i]] = dof_info[i].dq
+
+        lin_vel_x = self.j_ly
+        lin_vel_y = self.j_lx
+        ang_vel_z = -self.j_rx
+
+        self.command[0, 0] = np.clip(lin_vel_x, self.cmd_limits['lin_vel_x'][0], self.cmd_limits['lin_vel_x'][1])
+        self.command[0, 1] = np.clip(lin_vel_y, self.cmd_limits['lin_vel_y'][0], self.cmd_limits['lin_vel_y'][1])
+        self.command[0, 2] = np.clip(ang_vel_z, self.cmd_limits['ang_vel_z'][0], self.cmd_limits['ang_vel_z'][1])
+
+        if self.key_state[self.key_index["up"]][1] == 1:
+            self.command[0, 0] = self.cmd_limits['lin_vel_x'][1]
+        if self.key_state[self.key_index["down"]][1] == 1:
+            self.command[0, 0] = self.cmd_limits['lin_vel_x'][0]
+        if self.key_state[self.key_index["left"]][1] == 1:
+            self.command[0, 1] = self.cmd_limits['lin_vel_y'][1]
+        if self.key_state[self.key_index["right"]][1] == 1:
+            self.command[0, 1] = self.cmd_limits['lin_vel_y'][0]
+        if self.key_state[self.key_index["L2"]][1] == 1:
+            self.command[0, 2] = self.cmd_limits['ang_vel_z'][1]
+        if self.key_state[self.key_index["R2"]][1] == 1:
+            self.command[0, 2] = self.cmd_limits['ang_vel_z'][0]
+        if self.key_state[self.key_index["A"]][1] == 1 or self.key_state[self.key_index["B"]][1] == 1:
+            self.command[:] = 0.0
+
+        self.commands_scaled[0, 0] = self.command[0, 0] * self.obs_scales.lin_vel
+        self.commands_scaled[0, 1] = self.command[0, 1] * self.obs_scales.lin_vel
+        self.commands_scaled[0, 2] = self.command[0, 2]
+
+        np.multiply(self.ang_vel, self.obs_scales.ang_vel, out=self.scaled_ang_vel)
+
+        return np.concatenate((self.scaled_ang_vel,
+                               self.projected_gravity,
+                               self.commands_scaled,
+                               self.dof_pos * self.obs_scales.dof_pos,
+                               self.dof_vel * self.obs_scales.dof_vel,
+                               self.prev_action
+                               ), axis=-1)
+
+    def get_action(self):
+        obs = self.get_obs()
+        actions = self.actor.run([self.actor_output_name], {self.actor_input_name: obs})[0]
+        return actions, self.compute_torque(actions)
+
+    def compute_torque(self, actions):
+        actions_scaled = actions * self.action_scales
+        self.torques = actions_scaled
+
+        return self.torques
+
+    def run(self):
+        if self.estop_requested():
+            self.e_stop()
+            exit(0)
+
+        if self.loop_counter % self.control_decimation == 0:
+            raw_action, calculated_action = self.get_action()
+            self.current_action = raw_action
+            self.current_torques = calculated_action[0]
+            np.copyto(self.prev_action, raw_action)
+
+        if self.estop_requested():
+            self.e_stop()
+            exit(0)
+
+        for i, a in enumerate(self.mapping):
+            self.cmd.motor_cmd[i].q = self.current_torques[a] + self.default_joint_angles[i]
+            self.cmd.motor_cmd[i].kp = float(self.kps[i])
+            self.cmd.motor_cmd[i].dq = 0.0
+            self.cmd.motor_cmd[i].kd = float(self.kds[i])
+            self.cmd.motor_cmd[i].tau = 0.0
+
+        self.safe_write_cmd()
+        self.loop_counter += 1
+
+        # The policy is trained with decimation=4, so prev_action changes only on policy ticks.
+
+    def estop_requested(self):
+        return self.key_state[0][1] == 1 and self.key_state[1][1] == 1
+
+    def safe_write_cmd(self):
+        if self.estop_requested():
+            self.e_stop()
+            exit(0)
+        self.cmd.crc = self.crc.Crc(self.cmd)
+        self.low_cmd_puber.Write(self.cmd)
+
+    def e_stop(self):
+        for i in range(12):
+            self.cmd.motor_cmd[i].q = 0.
+            self.cmd.motor_cmd[i].kp = 0.0
+            self.cmd.motor_cmd[i].dq = 0.0
+            self.cmd.motor_cmd[i].kd = 0.
+            self.cmd.motor_cmd[i].tau = 0.
+        self.cmd.crc = CRC().Crc(self.cmd)
+        self.low_cmd_puber.Write(self.cmd)
+        print("Emergency stop: R1+L1 pressed, motors commanded passive.")
+
+    def stand_up(self):
+        runing_time = 0.0
+        stand_up_joint_pos = self.default_joint_angles.astype(float).copy()
+        stand_down_joint_pos = np.array([self.low_state.motor_state[i].q for i in range(12)], dtype=float)
+        step_start = time.perf_counter()
+        while True:
+            if self.estop_requested():
+                self.e_stop()
+                exit(0)
+
+            runing_time += 0.002
+
+            if (runing_time < 5.0):
+                # Stand up in first 3 second
+
+                # Total time for standing up or standing down is about 1.2s
+                phase = np.tanh(runing_time / 1.2)
+                for i in range(12):
+                    self.cmd.motor_cmd[i].q = phase * stand_up_joint_pos[i] + (
+                            1 - phase) * stand_down_joint_pos[i]
+                    self.cmd.motor_cmd[i].kp = phase * float(self.stand_kps[i]) + (1 - phase) * 60.0
+                    self.cmd.motor_cmd[i].dq = 0.0
+                    self.cmd.motor_cmd[i].kd = float(self.kds[i])
+                    self.cmd.motor_cmd[i].tau = 0.0
+
+            else:
+                break
+
+            self.safe_write_cmd()
+
+            time_until_next_step = 0.002 - (time.perf_counter() - step_start)
+            if time_until_next_step > 0:
+                time.sleep(time_until_next_step)
+            step_start = time.perf_counter()
+
+    def wait_for_low_state(self, timeout_s):
+        deadline = time.time() + timeout_s
+        while time.time() < deadline:
+            if self.low_state is not None:
+                return True
+            if self.estop_requested():
+                self.e_stop()
+                exit(0)
+            time.sleep(0.05)
+        return False
+
+    def load_policy(self):
+        if not Path(self.actor_path).is_file():
+            raise FileNotFoundError(
+                f"B2 policy file not found: {self.actor_path}. "
+                "Set GURUKUL_POLICY_PATH to the exported unitree_b2_flat ONNX."
+            )
+        actor = ort.InferenceSession(str(self.actor_path))
+        print('load actor from {}'.format(self.actor_path))
+        # estimator = ort.InferenceSession(self.estimator_path)
+        # print('load estimator from {}'.format(self.estimator_path))
+        return actor
+
+    def WirelessControllerHandler(self, msg: WirelessController_):
+        self.j_lx = msg.lx
+        self.j_ly = msg.ly
+        self.j_rx = msg.rx
+        self.j_ry = msg.ry
+
+        # Update key state
+        for i in range(16):
+            self.key_state[i][1] = (msg.keys & (1 << i)) >> i
+
+    def LowStateHandler(self, msg: LowState_):
+        self.low_state = msg
+
+
+if __name__ == '__main__':
+    print("WARNING: B2 hardware runner. Ensure the robot is supported and the area is clear.")
+    print("Policy:", RLController.actor_path)
+    input("Press Enter to continue...")
+
+    if len(sys.argv) > 1:
+        ChannelFactoryInitialize(0, sys.argv[1])
+    else:
+        ChannelFactoryInitialize(1, "lo")
+
+    rlcontroller = RLController()
+    while True:
+        start = time.time()
+        rlcontroller.run()
+        end = time.time()
+        time.sleep(max(0., rlcontroller.interval + start - end))

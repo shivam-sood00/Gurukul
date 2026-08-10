@@ -1,0 +1,4 @@
+<mujoco model="EngineAI PM01 official scene">
+  <include file="official/serial_pm01_edu.xml"/>
+  <include file="official/ground.xml"/>
+</mujoco>

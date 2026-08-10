@@ -1,0 +1,116 @@
+# Gurukul task:
+#   Gurukul-Isaac-B2-Z1-Arm-APEX-Flat-Tracker-One-Step-Future-History-v0
+# Assumes this repo lives at `Gurukul/unitree-sim2real/`.
+# Use --run latest or --policy-path once an exported history distillation ONNX exists.
+
+policy_path: "../logs/rsl_rl/unitree_b2_z1_arm_apex_flat_tracker_one_step_future_history_distill/<exported_run>/exported/policy.onnx"
+xml_path: "unitree_mujoco/unitree_robots/b2_with_z1/scene_flat.xml"
+
+control_type: "position"
+num_actions: 18
+num_motors: 19
+num_joint_obs: 18
+torque_limit: 320.0
+
+observation_layout: "go2_apex_tracker_history"
+history_length: 5
+num_obs: 600
+
+lin_vel_scale: 1.0
+ang_vel_scale: 0.25
+gravity_scale: 1.0
+dof_pos_scale: 1.0
+dof_vel_scale: 0.05
+cmd_scale: [1.0, 1.0, 1.0, 1.0]
+
+action_scale: 0.25
+action_scales_per_joint: [
+  0.125, 0.25, 0.25,
+  0.125, 0.25, 0.25,
+  0.125, 0.25, 0.25,
+  0.125, 0.25, 0.25,
+  0.05, 0.05, 0.05, 0.05, 0.05, 0.05,
+]
+action_clip: null
+arm_command:
+  enabled: true
+  indices: [12, 13, 14, 15, 16, 17]
+  gripper_index: 18
+  lower_limits: [-2.6180, 0.0, -2.8798, -1.5184, -1.3439, -2.7925]
+  upper_limits: [2.6180, 2.9671, 0.0, 1.5184, 1.3439, 2.7925]
+  max_joint_delta: 0.05
+  period_s: 0.04
+  command_velocity: true
+
+motor_names: [
+  "FR_hip_joint", "FR_thigh_joint", "FR_calf_joint",
+  "FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
+  "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint",
+  "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint",
+  "joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "jointGripper",
+]
+tracker_joint_names: [
+  "FR_hip_joint", "FR_thigh_joint", "FR_calf_joint",
+  "FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
+  "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint",
+  "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint",
+  "joint1", "joint2", "joint3", "joint4", "joint5", "joint6",
+]
+joint_mapping: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+controlled_motor_indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+joint_obs_mapping: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+
+cmd_init: [0.0, 0.0, 0.0]
+cmd_limits:
+  lin_vel_x: [-1.0, 1.5]
+  lin_vel_y: [-1000000000.0, 1000000000.0]
+  ang_vel_z: [-1000000000.0, 1000000000.0]
+
+cmd_smoothing:
+  key_step: [0.10, 0.10, 0.20]
+  accel: [1.2, 1.2, 3.2]
+  decel: [1.8, 1.8, 4.5]
+  key_timeout: 0.35
+
+simulation_duration: 1000.0
+simulation_dt: 0.005
+control_decimation: 4
+standup_duration_s: 0.0
+standup_kp: [
+  540.0, 540.0, 540.0,
+  540.0, 540.0, 540.0,
+  540.0, 540.0, 540.0,
+  540.0, 540.0, 540.0,
+  768.0, 1152.0, 1152.0, 768.0, 576.0, 384.0, 768.0,
+]
+standup_kd: "policy"
+
+kps: [
+  360.0, 360.0, 360.0,
+  360.0, 360.0, 360.0,
+  360.0, 360.0, 360.0,
+  360.0, 360.0, 360.0,
+  512.0, 768.0, 768.0, 512.0, 384.0, 256.0, 512.0,
+]
+kds: [
+  5.0, 5.0, 5.0,
+  5.0, 5.0, 5.0,
+  5.0, 5.0, 5.0,
+  5.0, 5.0, 5.0,
+  25.6, 25.6, 25.6, 25.6, 25.6, 25.6, 25.6,
+]
+
+default_angles: [
+  -0.1, 0.8, -1.5,
+   0.1, 0.8, -1.5,
+  -0.1, 0.8, -1.5,
+   0.1, 0.8, -1.5,
+   0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+]
+
+motion_visualization:
+  enabled: true
+  motion_file: "../source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/b2_z1_motions/**/*.npz"
+  shared_buffer_path: "/tmp/Gurukul_b2_z1_apex_motion_vis.mmap"
+  drive_command: true
+  reference_offsets: [0, 1]

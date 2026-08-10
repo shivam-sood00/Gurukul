@@ -1,0 +1,73 @@
+.statusBadges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0 1.25rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  border: 1px solid var(--mst-border);
+  border-radius: 7px;
+  padding: 0.25rem 0.625rem;
+  color: var(--ifm-font-color-base);
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.2;
+  background: var(--mst-surface);
+}
+
+.validated {
+  border-color: rgba(120, 197, 110, 0.45);
+  background: rgba(120, 197, 110, 0.14);
+  color: #2f7b30;
+}
+
+.maintained {
+  border-color: rgba(32, 196, 184, 0.42);
+  background: rgba(32, 196, 184, 0.13);
+  color: #087b76;
+}
+
+.experimental {
+  border-color: rgba(225, 168, 58, 0.5);
+  background: rgba(225, 168, 58, 0.16);
+  color: #8a5b00;
+}
+
+.legacy {
+  border-color: rgba(101, 115, 122, 0.45);
+  background: rgba(101, 115, 122, 0.14);
+  color: #4f5e64;
+}
+
+.target {
+  color: var(--ifm-font-color-base);
+  background: var(--mst-band);
+}
+
+.note {
+  flex-basis: 100%;
+  color: var(--mst-muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+[data-theme='dark'] .validated {
+  color: #9de08f;
+}
+
+[data-theme='dark'] .maintained {
+  color: #5de4dc;
+}
+
+[data-theme='dark'] .experimental {
+  color: #f0c96f;
+}
+
+[data-theme='dark'] .legacy {
+  color: #c1ccd0;
+}

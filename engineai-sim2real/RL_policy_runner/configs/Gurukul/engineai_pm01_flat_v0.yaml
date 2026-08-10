@@ -1,0 +1,147 @@
+# Gurukul task:
+#   Gurukul-Isaac-Velocity-Flat-EngineAI-PM01-v0
+
+policy_path: "../logs/rsl_rl/engineai_pm01_official_urdf_flat/exported/policy.onnx"
+xml_path: "../engineai-sim2real/engineai_mujoco/engineai_robots/pm01/scene.xml"
+
+control_type: "position"
+num_actions: 24
+num_motors: 24
+num_joint_obs: 24
+torque_limit: [
+  164.0, 164.0, 52.0, 164.0, 52.0, 52.0,
+  164.0, 164.0, 52.0, 164.0, 52.0, 52.0,
+  52.0,
+  52.0, 52.0, 52.0, 52.0, 52.0,
+  52.0, 52.0, 52.0, 52.0, 52.0,
+  52.0,
+]
+
+observation_layout: "isaac_term_history"
+history_length: 15
+num_obs: 1173
+
+lin_vel_scale: 1.0
+ang_vel_scale: 0.25
+gravity_scale: 1.0
+dof_pos_scale: 1.0
+dof_vel_scale: 0.05
+cmd_scale: [1.0, 1.0, 1.0]
+
+action_scale: 1.0
+action_scales_per_joint: [
+  0.229258746, 0.229258746, 0.491483361, 0.229258746, 0.491483361, 0.491483361,
+  0.229258746, 0.229258746, 0.491483361, 0.229258746, 0.491483361, 0.491483361,
+  0.491483361,
+  0.491483361, 0.491483361, 0.491483361, 0.491483361, 0.491483361,
+  0.491483361, 0.491483361, 0.491483361, 0.491483361, 0.491483361,
+  0.491483361,
+]
+
+joint_mapping: [
+  0, 1, 2, 3, 4, 5,
+  6, 7, 8, 9, 10, 11,
+  12,
+  13, 14, 15, 16, 17,
+  18, 19, 20, 21, 22, 23,
+]
+joint_obs_mapping: [
+  0, 1, 2, 3, 4, 5,
+  6, 7, 8, 9, 10, 11,
+  12,
+  13, 14, 15, 16, 17,
+  18, 19, 20, 21, 22, 23,
+]
+controlled_motor_indices: [
+  0, 1, 2, 3, 4, 5,
+  6, 7, 8, 9, 10, 11,
+  12,
+  13, 14, 15, 16, 17,
+  18, 19, 20, 21, 22, 23,
+]
+
+motor_names: [
+  "J00_HIP_PITCH_L", "J01_HIP_ROLL_L", "J02_HIP_YAW_L", "J03_KNEE_PITCH_L", "J04_ANKLE_PITCH_L", "J05_ANKLE_ROLL_L",
+  "J06_HIP_PITCH_R", "J07_HIP_ROLL_R", "J08_HIP_YAW_R", "J09_KNEE_PITCH_R", "J10_ANKLE_PITCH_R", "J11_ANKLE_ROLL_R",
+  "J12_WAIST_YAW",
+  "J13_SHOULDER_PITCH_L", "J14_SHOULDER_ROLL_L", "J15_SHOULDER_YAW_L", "J16_ELBOW_PITCH_L", "J17_ELBOW_YAW_L",
+  "J18_SHOULDER_PITCH_R", "J19_SHOULDER_ROLL_R", "J20_SHOULDER_YAW_R", "J21_ELBOW_PITCH_R", "J22_ELBOW_YAW_R",
+  "J23_HEAD_YAW",
+]
+
+cmd_init: [0.0, 0.0, 0.0]
+cmd_limits:
+  lin_vel_x: [-1.0, 1.5]
+  lin_vel_y: [-0.5, 0.5]
+  ang_vel_z: [-1.0, 1.0]
+
+cmd_smoothing:
+  key_step: [0.15, 0.08, 0.15]
+  accel: [1.8, 1.0, 2.4]
+  decel: [2.4, 1.4, 3.2]
+  key_timeout: 0.35
+
+simulation_duration: 1000.0
+simulation_dt: 0.002
+control_decimation: 10
+standup_duration_s: 3.0
+
+# EngineAI native-SDK pd_stand/default.yaml. The policy gains are too soft to
+# support the official MJCF during the generic runner's stand-up transition.
+standup_angles: [
+  0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+  0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+  0.0,
+  0.0, 0.08, 0.0, -0.128, 0.0,
+  0.0, -0.08, 0.0, -0.128, 0.0,
+  0.0,
+]
+standup_kp: [
+  200.0, 200.0, 380.0, 450.0, 400.0, 200.0,
+  200.0, 200.0, 380.0, 450.0, 400.0, 200.0,
+  200.0,
+  250.0, 250.0, 250.0, 250.0, 250.0,
+  250.0, 250.0, 250.0, 250.0, 250.0,
+  100.0,
+]
+standup_start_kp: [
+  200.0, 200.0, 380.0, 450.0, 400.0, 200.0,
+  200.0, 200.0, 380.0, 450.0, 400.0, 200.0,
+  200.0,
+  250.0, 250.0, 250.0, 250.0, 250.0,
+  250.0, 250.0, 250.0, 250.0, 250.0,
+  100.0,
+]
+standup_kd: [
+  5.0, 5.0, 5.0, 5.0, 2.0, 2.0,
+  5.0, 5.0, 5.0, 5.0, 2.0, 2.0,
+  1.0,
+  1.0, 1.0, 1.0, 1.0, 1.0,
+  1.0, 1.0, 1.0, 1.0, 1.0,
+  1.0,
+]
+
+kps: [
+  178.8372345, 178.8372345, 26.4505405, 178.8372345, 26.4505405, 26.4505405,
+  178.8372345, 178.8372345, 26.4505405, 178.8372345, 26.4505405, 26.4505405,
+  26.4505405,
+  26.4505405, 26.4505405, 26.4505405, 26.4505405, 26.4505405,
+  26.4505405, 26.4505405, 26.4505405, 26.4505405, 26.4505405,
+  26.4505405,
+]
+kds: [
+  11.3851318, 11.3851318, 1.6838937, 11.3851318, 0.5, 0.5,
+  11.3851318, 11.3851318, 1.6838937, 11.3851318, 0.5, 0.5,
+  1.6838937,
+  1.6838937, 1.6838937, 1.6838937, 1.6838937, 1.6838937,
+  1.6838937, 1.6838937, 1.6838937, 1.6838937, 1.6838937,
+  1.6838937,
+]
+default_angles: [
+  -0.06, 0.0, 0.0, 0.12, -0.06, 0.0,
+  -0.06, 0.0, 0.0, 0.12, -0.06, 0.0,
+  0.0,
+  0.0, 0.15, 0.0, -0.25, 0.0,
+  0.0, -0.15, 0.0, -0.25, 0.0,
+  0.0,
+]

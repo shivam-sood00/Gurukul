@@ -1,0 +1,130 @@
+# Robustness probe: run the plain 45-D / 12-action Go2 flat policy on the
+# Go2+D1 MuJoCo model while D1 follows an independent reference motion.
+
+policy_path: "../logs/rsl_rl/unitree_go2_flat/2026-03-12_19-03-13/exported/policy.onnx"
+xml_path: "unitree_mujoco/unitree_robots/go2_with_d1/scene_flat.xml"
+
+control_type: "position"
+num_actions: 12
+num_motors: 19
+num_joint_obs: 12
+controlled_motor_indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+joint_obs_mapping: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+torque_limit: [
+  23.5, 23.5, 23.5,
+  23.5, 23.5, 23.5,
+  23.5, 23.5, 23.5,
+  23.5, 23.5, 23.5,
+  3.3, 3.3, 3.3, 1.7, 1.7, 1.7,
+  15.0,
+]
+
+# Preserve the original plain-Go2 actor contract. D1 state is deliberately
+# absent from both joint observations and previous actions.
+observation_layout: "isaac_45"
+num_obs: 45
+
+lin_vel_scale: 1.0
+ang_vel_scale: 0.25
+gravity_scale: 1.0
+dof_pos_scale: 1.0
+dof_vel_scale: 0.05
+cmd_scale: [1.0, 1.0, 1.0]
+
+action_scale: 0.25
+hip_action_scale: 0.125
+hip_joint_indices: [0, 3, 6, 9]
+joint_mapping: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+
+motor_names: [
+  "FR_hip_joint", "FR_thigh_joint", "FR_calf_joint",
+  "FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
+  "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint",
+  "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint",
+  "arm_1_joint", "arm_2_joint", "arm_3_joint",
+  "arm_4_joint", "arm_5_joint", "arm_6_joint",
+  "arm_7_1_joint",
+]
+tracker_joint_names: [
+  "FR_hip_joint", "FR_thigh_joint", "FR_calf_joint",
+  "FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
+  "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint",
+  "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint",
+  "arm_1_joint", "arm_2_joint", "arm_3_joint",
+  "arm_4_joint", "arm_5_joint", "arm_6_joint",
+  "arm_7_1_joint",
+]
+
+cmd_init: [0.0, 0.0, 0.0]
+cmd_limits:
+  lin_vel_x: [-1.0, 1.0]
+  lin_vel_y: [-1.0, 1.0]
+  ang_vel_z: [-1.0, 1.0]
+
+cmd_smoothing:
+  key_step: [0.15, 0.10, 0.20]
+  accel: [1.8, 1.2, 3.2]
+  decel: [2.4, 1.8, 4.5]
+  key_timeout: 0.35
+
+simulation_duration: 1000.0
+simulation_dt: 0.005
+control_decimation: 4
+standup_duration_s: 2.0
+standup_kp: "policy"
+standup_kd: "policy"
+
+kps: [
+  20.0, 20.0, 20.0,
+  20.0, 20.0, 20.0,
+  20.0, 20.0, 20.0,
+  20.0, 20.0, 20.0,
+  200.0, 200.0, 200.0, 50.0, 50.0, 50.0,
+  200.0,
+]
+kds: [
+  0.5, 0.5, 0.5,
+  0.5, 0.5, 0.5,
+  0.5, 0.5, 0.5,
+  0.5, 0.5, 0.5,
+  5.0, 5.0, 4.0, 0.25, 0.25, 0.25,
+  3.0,
+]
+
+default_angles: [
+  -0.1, 0.8, -1.5,
+   0.1, 0.8, -1.5,
+  -0.1, 1.0, -1.5,
+   0.1, 1.0, -1.5,
+   0.0, -1.5707963268, 1.5707963268, 0.0, 0.0, 0.0,
+   0.0,
+]
+
+# D1 is driven independently from the locomotion actor. The adapter preserves
+# the existing D1 sim2sim command quantization, latency, and setpoint response.
+arm_command:
+  enabled: true
+  source: "motion_reference"
+  indices: [12, 13, 14, 15, 16, 17, 18]
+  reference_indices: [12, 13, 14, 15, 16, 17, 18]
+  gripper_index: 18
+  model: "second_order_angle"
+  lower_limits: [-2.35, -1.57, -1.57, -2.35, -1.57, -2.35, 0.0]
+  upper_limits: [2.35, 1.57, 1.57, 2.35, 1.57, 2.35, 0.033]
+  period_s: 0.10
+  quantization_rad: [
+    0.001745329252, 0.001745329252, 0.001745329252,
+    0.001745329252, 0.001745329252, 0.001745329252,
+    0.00003391572456,
+  ]
+  natural_frequency_hz: 6.0
+  damping_ratio: 1.0
+  latency_s: 0.02
+  command_velocity: false
+
+motion_visualization:
+  enabled: true
+  motion_file: "../source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/go2_d1/wave_hello.npz"
+  shared_buffer_path: "/tmp/Gurukul_go2_plain_policy_d1_motion_vis.mmap"
+  drive_command: false
+  include_skill_observation: false

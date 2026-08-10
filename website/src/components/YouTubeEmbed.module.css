@@ -1,0 +1,28 @@
+.figure {
+  margin: 1.5rem 0;
+}
+
+.frame {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--mst-border);
+  border-radius: 8px;
+  background: #0e1c24;
+  box-shadow: var(--mst-shadow);
+}
+
+.frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.figure figcaption {
+  margin-top: 0.55rem;
+  color: var(--mst-muted);
+  font-size: 0.9rem;
+}

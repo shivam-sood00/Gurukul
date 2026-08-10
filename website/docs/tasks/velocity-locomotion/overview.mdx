@@ -1,0 +1,53 @@
+---
+title: Velocity Locomotion
+description: Velocity-policy baselines and research variants for quadrupeds, humanoids, and wheeled robots.
+---
+
+import YouTubeEmbed from '@site/src/components/YouTubeEmbed';
+
+# Velocity Locomotion
+
+Velocity tasks ask quadrupeds, humanoids, and wheeled robots to track commanded planar motion on flat or rough terrain.
+This page organizes the task and its supported platforms; learning architectures and teacher/student workflows live
+under [Training & Methods](../../training-methods/overview).
+
+<YouTubeEmbed
+  videoId="YSVoAav-n2I"
+  title="Gurukul velocity locomotion task video"
+  caption="Velocity locomotion demo."
+/>
+
+## Subsections
+
+- [Platforms and baselines](baselines): flat/rough PPO tasks, supported robot families, teacher entry points, playback,
+  and selected platform transfer notes.
+- [EngineAI PM01](pm01): PM01 flat/rough training and the exact velocity-policy MuJoCo contract.
+- [G1 + BrainCo Revo2](../g1-brainco-revo): G1 velocity configs carrying Revo2 command-interface metadata.
+
+## Related Training Methods
+
+- [Locomotion Methods](../../training-methods/locomotion) groups START, REAL, AME, and Contact Trails by how they train
+  or represent a velocity policy.
+- [Score-Matching Motion Priors](../../training-methods/score-matching-motion-priors) combine the existing flat
+  velocity reward with separate, morphology-specific G1, PM01, or Go2 diffusion priors.
+- [Student-Teacher Learning](../student-teacher/overview) groups teacher policies, depth students, distillation,
+  action priors, Sim2Sim, and debugging.
+
+## Maintained robot families
+
+- Unitree Go2 flat and rough velocity tasks.
+- Unitree G1 flat and rough velocity tasks.
+- Additional Unitree B2, H1, B2W, and Go2W tasks. B2 flat velocity training is
+  `Gurukul-Isaac-Velocity-Flat-Unitree-B2-v0` with experiment `unitree_b2_flat`.
+- Booster T1 velocity tasks.
+- DeepRobotics Lite3 and M20 velocity tasks.
+- EngineAI PM01 velocity tasks.
+
+Use the linked velocity subpages for exact task IDs, agent entry points, and command variants.
+
+## Credits
+
+The locomotion environment lineage follows [Legged Gym](https://github.com/leggedrobotics/legged_gym), Isaac Lab, and
+the task/config structure adapted from [`fan-ziqi/robot_lab`](https://github.com/fan-ziqi/robot_lab). Method-specific
+subpages identify later papers and repositories; [Acknowledgements](../../reference/credits) summarizes the shared
+foundations.

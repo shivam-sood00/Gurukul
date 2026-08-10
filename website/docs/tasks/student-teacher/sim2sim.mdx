@@ -1,0 +1,95 @@
+---
+title: Sim2Sim
+---
+
+import YouTubeEmbed from '@site/src/components/YouTubeEmbed';
+
+# Sim2Sim
+
+Student-teacher sim2sim is the handoff from a trained student actor to the bundled Go2 MuJoCo runner. Use this page to
+decide whether a student policy is runnable there, then check APEX [Sim2Sim](../apex/sim2sim) for the runner behavior
+shared across APEX-style tasks.
+
+<YouTubeEmbed
+  videoId="WkIet5w7lNI"
+  title="Gurukul student-teacher sim2sim video"
+  caption="Student-teacher sim2sim demo."
+/>
+
+## Supported student exports
+
+| Runner task | Isaac Lab task | Notes |
+| --- | --- | --- |
+| `go2_velocity_rough_depth_distill_v0` | `Gurukul-Isaac-Velocity-Rough-Unitree-Go2-Depth-Distill-v0` | Rough Go2 student actor with proprioception plus a `58x87` depth image. |
+| `go2_velocity_flat_v0` | `Gurukul-Isaac-Velocity-Flat-Unitree-Go2-v0` | Plain 45-D flat actor. Student or distilled runs can be selected if the exported actor has the same observation layout. |
+| `go2_velocity_rough_v0` | `Gurukul-Isaac-Velocity-Rough-Unitree-Go2-v0` | Plain 45-D rough actor. Student or distilled runs can be selected if no privileged-only terms remain in the actor. |
+| `go2_apex_flat_v0` | `Gurukul-Isaac-Go2-APEX-Flat-v0` | Current 46-D APEX actor with a four-value motion command and MuJoCo reference overlay; historical 45-D exports require the legacy YAML. |
+| `go2_apex_flat_tracker_v0` | `Gurukul-Isaac-Go2-APEX-Flat-Tracker-v0` | APEX tracker actor with reference-motion observations and overlay. |
+
+Teacher-only families such as `unitree_go2_rough_teacher`, `unitree_go2_rough_teacher_full`, and REAL teachers are not
+separate MuJoCo runner tasks because their actor observations include privileged or terrain-specific terms unavailable
+to the deployable runner. A teacher can still be used as an Isaac Lab comparison policy before export.
+
+## Export and run
+
+Export the student actor with the matching training task and checkpoint:
+
+```bash
+python scripts/reinforcement_learning/rsl_rl/play.py \
+  --task <student_task_id> \
+  --checkpoint <student_checkpoint> \
+  --export_policy
+```
+
+Then run the corresponding MuJoCo task from `unitree-sim2real/`:
+
+```bash
+python RL_policy_runner/sim2sim/run_rl_policy.py \
+  --task go2_velocity_rough_depth_distill_v0 \
+  --run <exported_run_folder_or_latest>
+```
+
+Use `--policy-path <.../policy.onnx>` when the exported policy is outside the default `logs/rsl_rl/<experiment>/<run>/exported/policy.onnx` layout.
+
+## Depth-student path
+
+For the rough depth-distill student, the runner expects MuJoCo to publish raw depth frames and then crops/resizes them for the policy:
+
+```bash
+python RL_policy_runner/sim2sim/run_rl_policy.py \
+  --task go2_velocity_rough_depth_distill_v0 \
+  --launch-mujoco
+```
+
+The manual equivalent starts MuJoCo on the stairs scene before the policy runner:
+
+```bash
+MUJOCO_GL=glfw GURUKUL_MUJOCO_SCENE=scene_stairs.xml python unitree_mujoco/simulate_python/unitree_mujoco.py
+python RL_policy_runner/sim2sim/run_rl_policy.py --task go2_velocity_rough_depth_distill_v0
+```
+
+If a depth policy runs in Isaac Lab but fails in MuJoCo, check the depth camera group first, then the image size, crop, normalization, and policy input count. The broader observation checklist lives in [Debugging](debugging).
+
+## APEX notes
+
+APEX sim2sim uses the same runner entry point, but tracker policies have a separate reference-motion observation contract.
+Use APEX [Sim2Sim](../apex/sim2sim) for the maintained task matrix and viewer behavior.
+
+For base APEX motion inspection, the motion file can still be overridden:
+
+```bash
+python RL_policy_runner/sim2sim/run_rl_policy.py \
+  --task go2_apex_flat_v0 \
+  --motion-file ../source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/animal_mocap/go2_retarget_trot.npz
+```
+
+The MuJoCo viewer draws reference-foot markers for APEX runs. Use `N/P` to switch motions when a glob contains multiple clips.
+
+## Transfer checks
+
+- Match the student actor observation groups to what the runner can build. Privileged `critic` observations are teacher-side training signals, not deployable actor inputs.
+- Match action order, action scale, PD gains, default joint pose, and torque limits before comparing rollouts.
+- Compare Isaac Lab playback and MuJoCo traces with the same command stream and checkpoint.
+- Keep `--teacher_*` checkpoint flags in the training recipe. The MuJoCo runner consumes the exported student actor.
+
+For the maintained APEX runner task matrix and viewer behavior, see [APEX Sim2Sim](../apex/sim2sim).

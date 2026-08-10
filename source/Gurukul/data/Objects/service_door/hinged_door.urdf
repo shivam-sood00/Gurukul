@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<!-- Repository-authored push-open door for the Go2+D1 service benchmark. -->
+<robot name="service_door">
+  <material name="frame_dark"><color rgba="0.10 0.12 0.15 1"/></material>
+  <material name="panel_blue"><color rgba="0.16 0.34 0.48 1"/></material>
+  <material name="handle_gold"><color rgba="0.92 0.63 0.08 1"/></material>
+
+  <link name="frame">
+    <inertial>
+      <origin xyz="0 -0.51 0.85" rpy="0 0 0"/>
+      <mass value="45"/>
+      <inertia ixx="18.0" ixy="0" ixz="0" iyy="6.0" iyz="0" izz="14.0"/>
+    </inertial>
+    <visual name="hinge_jamb_visual"><origin xyz="0 0 0.85"/><geometry><box size="0.12 0.12 1.70"/></geometry><material name="frame_dark"/></visual>
+    <collision name="hinge_jamb"><origin xyz="0 0 0.85"/><geometry><box size="0.12 0.12 1.70"/></geometry></collision>
+    <visual name="far_jamb_visual"><origin xyz="0 -1.02 0.85"/><geometry><box size="0.12 0.12 1.70"/></geometry><material name="frame_dark"/></visual>
+    <collision name="far_jamb"><origin xyz="0 -1.02 0.85"/><geometry><box size="0.12 0.12 1.70"/></geometry></collision>
+    <visual name="header_visual"><origin xyz="0 -0.51 1.64"/><geometry><box size="0.12 1.14 0.12"/></geometry><material name="frame_dark"/></visual>
+    <collision name="header"><origin xyz="0 -0.51 1.64"/><geometry><box size="0.12 1.14 0.12"/></geometry></collision>
+  </link>
+
+  <link name="panel">
+    <inertial>
+      <origin xyz="0 -0.45 0" rpy="0 0 0"/>
+      <mass value="8"/>
+      <inertia ixx="2.14" ixy="0" ixz="0" iyy="1.60" iyz="0" izz="0.54"/>
+    </inertial>
+    <visual name="panel_slab_visual"><origin xyz="0 -0.45 0"/><geometry><box size="0.055 0.90 1.55"/></geometry><material name="panel_blue"/></visual>
+    <collision name="panel_slab"><origin xyz="0 -0.45 0"/><geometry><box size="0.055 0.90 1.55"/></geometry></collision>
+    <visual name="handle_rose_visual"><origin xyz="-0.043 -0.72 -0.10" rpy="0 1.57079632679 0"/><geometry><cylinder radius="0.055" length="0.035"/></geometry><material name="handle_gold"/></visual>
+    <collision name="handle_rose"><origin xyz="-0.043 -0.72 -0.10" rpy="0 1.57079632679 0"/><geometry><cylinder radius="0.055" length="0.035"/></geometry></collision>
+    <visual name="handle_neck_visual"><origin xyz="-0.100 -0.72 -0.10" rpy="0 1.57079632679 0"/><geometry><cylinder radius="0.017" length="0.090"/></geometry><material name="handle_gold"/></visual>
+    <collision name="handle_neck"><origin xyz="-0.100 -0.72 -0.10" rpy="0 1.57079632679 0"/><geometry><cylinder radius="0.017" length="0.090"/></geometry></collision>
+    <visual name="lever_grip_visual"><origin xyz="-0.145 -0.72 -0.10" rpy="1.57079632679 0 0"/><geometry><cylinder radius="0.018" length="0.24"/></geometry><material name="handle_gold"/></visual>
+    <collision name="lever_grip"><origin xyz="-0.145 -0.72 -0.10" rpy="1.57079632679 0 0"/><geometry><cylinder radius="0.018" length="0.24"/></geometry></collision>
+  </link>
+
+  <joint name="door_hinge" type="revolute">
+    <parent link="frame"/>
+    <child link="panel"/>
+    <origin xyz="0 0 0.80" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="0" upper="1.74532925199" effort="25" velocity="2"/>
+    <dynamics damping="1.2" friction="0.15"/>
+  </joint>
+</robot>

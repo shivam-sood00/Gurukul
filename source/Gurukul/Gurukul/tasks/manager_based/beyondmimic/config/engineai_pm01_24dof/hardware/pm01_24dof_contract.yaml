@@ -1,0 +1,84 @@
+# EngineAI PM01 24-DoF policy-to-hardware contract.
+# Numeric policy parameters mirror pretrained/deploy_config.yaml.
+source:
+  rl_lab_commit: "14ec57be718586bd0ac45375aa1115bd896fbdbc"
+  native_sdk_commit: "83204a459e0e786f855235a8507197496a79acc7"
+
+timing:
+  policy_period_s: 0.02
+  policy_frequency_hz: 50
+  low_level_period_s: 0.002
+  low_level_frequency_hz: 500
+
+control:
+  type: position_residual
+  resident_control: false
+  target_equation: "default_joint_pos + action * action_scale"
+  observation_names:
+    [command, motion_anchor_ori_b, base_ang_vel, joint_pos, joint_vel, actions]
+  observation_history_lengths: [1, 1, 1, 1, 1, 1]
+  observation_dim: 129
+  action_dim: 24
+
+# EngineAI hardware/native-SDK total-limb order.
+hardware_joint_names:
+  [
+    J00_HIP_PITCH_L, J01_HIP_ROLL_L, J02_HIP_YAW_L, J03_KNEE_PITCH_L,
+    J04_ANKLE_PITCH_L, J05_ANKLE_ROLL_L,
+    J06_HIP_PITCH_R, J07_HIP_ROLL_R, J08_HIP_YAW_R, J09_KNEE_PITCH_R,
+    J10_ANKLE_PITCH_R, J11_ANKLE_ROLL_R,
+    J12_WAIST_YAW,
+    J13_SHOULDER_PITCH_L, J14_SHOULDER_ROLL_L, J15_SHOULDER_YAW_L,
+    J16_ELBOW_PITCH_L, J17_ELBOW_YAW_L,
+    J18_SHOULDER_PITCH_R, J19_SHOULDER_ROLL_R, J20_SHOULDER_YAW_R,
+    J21_ELBOW_PITCH_R, J22_ELBOW_YAW_R,
+    J23_HEAD_YAW,
+  ]
+
+# Actor/deployment order. Never assume this is hardware order.
+policy_joint_names:
+  [
+    J00_HIP_PITCH_L, J06_HIP_PITCH_R, J12_WAIST_YAW, J01_HIP_ROLL_L,
+    J07_HIP_ROLL_R, J13_SHOULDER_PITCH_L, J18_SHOULDER_PITCH_R, J23_HEAD_YAW,
+    J02_HIP_YAW_L, J08_HIP_YAW_R, J14_SHOULDER_ROLL_L, J19_SHOULDER_ROLL_R,
+    J03_KNEE_PITCH_L, J09_KNEE_PITCH_R, J15_SHOULDER_YAW_L, J20_SHOULDER_YAW_R,
+    J04_ANKLE_PITCH_L, J10_ANKLE_PITCH_R, J16_ELBOW_PITCH_L, J21_ELBOW_PITCH_R,
+    J05_ANKLE_ROLL_L, J11_ANKLE_ROLL_R, J17_ELBOW_YAW_L, J22_ELBOW_YAW_R,
+  ]
+policy_to_hardware_index:
+  [0, 6, 12, 1, 7, 13, 18, 23, 2, 8, 14, 19, 3, 9, 15, 20, 4, 10, 16, 21, 5, 11, 17, 22]
+hardware_to_policy_index:
+  [0, 3, 8, 12, 16, 20, 1, 4, 9, 13, 17, 21, 2, 5, 10, 14, 18, 22, 6, 11, 15, 19, 23, 7]
+
+walking_reference:
+  motion_frequency_hz: 50
+  head_yaw_policy_index: 7
+  head_yaw_position_rad: 0.0
+  head_yaw_velocity_rad_s: 0.0
+
+default_joint_pos:
+  [-0.06, -0.06, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.15, -0.15,
+   0.12, 0.12, 0.0, 0.0, -0.06, -0.06, -0.25, -0.25, 0.0, 0.0, 0.0, 0.0]
+joint_stiffness:
+  [178.8372345, 178.8372345, 26.4505405, 178.8372345, 178.8372345, 26.4505405,
+   26.4505405, 26.4505405, 26.4505405, 26.4505405, 26.4505405, 26.4505405,
+   178.8372345, 178.8372345, 26.4505405, 26.4505405, 26.4505405, 26.4505405,
+   26.4505405, 26.4505405, 26.4505405, 26.4505405, 26.4505405, 26.4505405]
+joint_damping:
+  [11.3851318, 11.3851318, 1.6838937, 11.3851318, 11.3851318, 1.6838937,
+   1.6838937, 1.6838937, 1.6838937, 1.6838937, 1.6838937, 1.6838937,
+   11.3851318, 11.3851318, 1.6838937, 1.6838937, 0.5, 0.5,
+   1.6838937, 1.6838937, 0.5, 0.5, 1.6838937, 1.6838937]
+action_scale:
+  [0.229258746, 0.229258746, 0.491483361, 0.229258746, 0.229258746, 0.491483361,
+   0.491483361, 0.491483361, 0.491483361, 0.491483361, 0.491483361, 0.491483361,
+   0.229258746, 0.229258746, 0.491483361, 0.491483361, 0.491483361, 0.491483361,
+   0.491483361, 0.491483361, 0.491483361, 0.491483361, 0.491483361, 0.491483361]
+training_effort_limit:
+  [164.0, 164.0, 52.0, 164.0, 164.0, 52.0, 52.0, 52.0, 52.0, 52.0, 52.0, 52.0,
+   164.0, 164.0, 52.0, 52.0, 52.0, 52.0, 52.0, 52.0, 52.0, 52.0, 52.0, 52.0]
+
+# Native-SDK motor/default.yaml signs, in hardware_joint_names order.
+hardware_motor_sign:
+  [1, 1, -1, -1, -1, -1, -1, 1, -1, 1, -1, -1, 1,
+   1, -1, -1, 1, -1, -1, -1, -1, -1, -1, 1]

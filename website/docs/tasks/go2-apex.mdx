@@ -1,0 +1,77 @@
+---
+title: APEX
+description: APEX motion-tracking tasks, policy interfaces, motion tools, and transfer paths.
+---
+
+import YouTubeEmbed from '@site/src/components/YouTubeEmbed';
+
+# APEX
+
+:::info[Available paths]
+APEX includes Isaac Lab training and replay, MuJoCo runners for the tasks listed on the Sim2Sim page, and hardware
+handoff entry points for the platforms listed on the Sim2Real page. Coverage is task-specific; verify the exact
+observation, action, artifact, and safety contract before transfer.
+:::
+
+APEX is the maintained motion-tracking task family for policies that follow reference motion clips. It covers plain
+motion imitation, reference-conditioned tracking, privileged-teacher distillation, depth variants, and sim2sim/sim2real
+handoff paths.
+
+<YouTubeEmbed
+  videoId="B-rWg1W3ttk"
+  title="Gurukul Go2 APEX task video"
+  caption="Go2 APEX demo."
+/>
+
+## What It Is
+
+APEX tasks combine a robot state policy input with motion-reference terms from an active NPZ clip. The policy is trained
+to produce stable robot actions while tracking the reference phase, body motion, joint motion, and foot or end-effector
+targets.
+
+The main implementation areas are:
+
+- Go2, Go2+D1, and B2+Z1 APEX configs under `source/Gurukul/Gurukul/tasks/manager_based/go2_apex/`.
+- G1 APEX/BeyondMimic configs under `source/Gurukul/Gurukul/tasks/manager_based/beyondmimic/config/g1/`.
+- APEX motion conversion and replay tools under `scripts/tools/go2_apex/`.
+- MuJoCo and hardware runners under `unitree-sim2real/`.
+
+## Reference Interface
+
+APEX tracker policies use current robot observations plus reference features from one or more motion frames. Go2 tracker
+policies use 12 reference joint positions plus base linear velocity, base angular velocity, and base quaternion for each
+reference frame. B2+Z1 tracker policies use 18 tracked leg/arm joints plus the same base terms.
+
+Default Go2 tracker offsets are `(0, 1, 2, 5, 10)`. One-step tracker variants use `(0, 1)`, and history variants stack
+several recent actor observations in the same term-major order used by Isaac Lab observation history.
+
+## Task Shapes
+
+| Shape | Use |
+| --- | --- |
+| Base imitation | Train from a single deployable actor observation and motion-imitation rewards. |
+| Tracker | Add current/future reference observations to the actor input. |
+| Privileged tracker | Train a full-state teacher with clean reference and robot-state terms. |
+| History student | Distill a deployable tracker with several frames of observation/reference history. |
+| Robot extensions | Track Go2+D1 or B2+Z1 arm joints and end-effector targets when the motion files provide them. |
+| Depth variants | Train Isaac Lab depth students or action-prior policies for APEX-style tasks. |
+
+## Pages
+
+| Page | Use |
+| --- | --- |
+| [Training](apex/training) | Task IDs, agents, train/play commands, and training notes. |
+| [Motion Data](apex/motion-data) | Motion file layout, conversion, replay, and audit commands. |
+| [Sim2Sim](apex/sim2sim) | MuJoCo runner tasks, observation contracts, motion switching, and delta diagnostics. |
+| [Sim2Real](apex/sim2real) | Hardware runner entry points, policy requirements, and pre-hardware checks. |
+
+For the broader task-family entry point, see [Motion Tracking](motion-tracking/overview).
+
+## Credits and Method Scope
+
+The local family implements and extends ideas from the [original APEX formulation](https://arxiv.org/abs/2505.10022),
+the [expanded APEX motion-tracking paper](https://arxiv.org/abs/2511.09091), and
+[DecAP](https://arxiv.org/abs/2310.05714). See the
+[official APEX implementation](https://github.com/marmotlab/APEX) and the repository-wide
+[Acknowledgements](../reference/credits). Local task variants and validation claims are limited to what
+their individual pages and the task-status catalog report.

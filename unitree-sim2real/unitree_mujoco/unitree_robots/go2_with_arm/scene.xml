@@ -1,0 +1,54 @@
+<mujoco model="go2_with_arm scene">
+  <include file="go2_with_arm.xml"/>
+
+  <statistic center="0 0 0.1" extent="0.8"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="-130" elevation="-20"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
+    <texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3"
+      markrgb="0.8 0.8 0.8" width="300" height="300"/>
+    <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0.2"/>
+
+    <!-- Realistic materials for stairs -->
+    <material name="stair_up" rgba="0.3 0.3 0.3 1" reflectance="0.05" shininess="0.1"/>
+    <material name="stair_down" rgba="0.4 0.4 0.4 1" reflectance="0.05" shininess="0.1"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
+    <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
+
+
+        <!-- Ascending stairs with step height of 10 cm -->
+    <!-- <geom pos="1.2 0 0.10" type="box" size="0.15 1 0.04" material="stair_up"/>
+    <geom pos="1.5 0 0.20" type="box" size="0.15 1 0.04" material="stair_up"/>
+    <geom pos="1.8 0 0.30" type="box" size="0.15 1 0.04" material="stair_up"/>
+    <geom pos="2.1 0 0.40" type="box" size="0.15 1 0.04" material="stair_up"/>
+    <geom pos="2.4 0 0.50" type="box" size="0.15 1 0.04" material="stair_up"/> -->
+
+    <!-- Descending stairs with step height of 10 cm -->
+    <!-- <geom pos="2.7 0 0.40" type="box" size="0.15 1 0.04" material="stair_down"/>
+    <geom pos="3.0 0 0.30" type="box" size="0.15 1 0.04" material="stair_down"/>
+    <geom pos="3.3 0 0.20" type="box" size="0.15 1 0.04" material="stair_down"/>
+    <geom pos="3.6 0 0.10" type="box" size="0.15 1 0.04" material="stair_down"/>
+    <geom pos="3.9 0 0.00" type="box" size="0.15 1 0.04" material="stair_down"/> -->
+
+      <!-- Ascending slope -->
+  <!-- <geom name="slope_up" type="box" pos="1.8 0 0.25" size="0.75 1 0.025"
+        euler="0 -0.26 0" material="stair_up"/> -->
+   <!-- ~15 degrees up -->
+
+  <!-- Descending slope -->
+  <!-- <geom name="slope_down" type="box" pos="3.6 0 0.25" size="0.75 1 0.025"
+        euler="0 0.26 0" material="stair_down"/>  -->
+  <!-- ~15 degrees down -->
+  </worldbody>
+
+  
+</mujoco>

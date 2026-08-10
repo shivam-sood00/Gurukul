@@ -1,0 +1,138 @@
+.welcome {
+  width: 100%;
+}
+
+.intro {
+  margin-bottom: 2.5rem;
+}
+
+.title {
+  margin-bottom: 1rem;
+  font-size: clamp(2rem, 7.5vw, 3.65rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+}
+
+.introText .eyebrow {
+  margin-bottom: 0.65rem;
+  color: var(--ifm-color-primary);
+  font-size: 0.84rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.introText {
+  max-width: 62rem;
+}
+
+.introText p {
+  font-size: 1.04rem;
+  line-height: 1.65;
+}
+
+.introText .lede {
+  max-width: 54rem;
+  margin-bottom: 1rem;
+  color: var(--ifm-font-color-base);
+  font-size: clamp(1.15rem, 2vw, 1.35rem);
+  line-height: 1.55;
+}
+
+.researchNote {
+  max-width: 56rem;
+  margin-top: 1.35rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--mst-border);
+  border-left: 3px solid var(--ifm-color-primary);
+  border-radius: 7px;
+  color: var(--mst-muted);
+  line-height: 1.55;
+  background: var(--mst-band);
+}
+
+.researchNote strong {
+  color: var(--ifm-font-color-base);
+}
+
+.section {
+  margin-top: 2.5rem;
+}
+
+.sectionHeader {
+  margin-bottom: 1rem;
+}
+
+.sectionHeader h2 {
+  margin-bottom: 0.35rem;
+}
+
+.sectionHeader p {
+  margin: 0;
+  color: var(--mst-muted);
+}
+
+.taskCard {
+  border: 1px solid var(--mst-border);
+  border-radius: 8px;
+  background: var(--mst-surface);
+}
+.taskCard p {
+  color: var(--mst-muted);
+}
+
+.taskGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 0.9rem;
+}
+
+.taskCard {
+  display: flex;
+  min-height: 12rem;
+  flex-direction: column;
+  padding: 1rem;
+}
+
+.taskCard h3 {
+  margin: 0 0 0.2rem;
+  font-size: 1.1rem;
+}
+
+.taskMeta {
+  margin: 0.2rem 0 0.35rem;
+  color: var(--ifm-color-primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.taskCard p {
+  margin: 0.4rem 0 0.85rem;
+  line-height: 1.45;
+}
+
+.taskCard a {
+  margin-top: auto;
+  font-weight: 650;
+}
+
+@media (max-width: 576px) {
+  .title {
+    overflow-wrap: normal;
+    word-break: keep-all;
+  }
+
+  .section {
+    margin-top: 2rem;
+  }
+
+  .taskGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .taskCard {
+    min-height: 0;
+  }
+}

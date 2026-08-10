@@ -1,0 +1,3 @@
+<mujoco model="b2_with_z1 scene">
+  <include file="scene_flat.xml"/>
+</mujoco>
