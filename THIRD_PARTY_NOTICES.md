@@ -32,8 +32,12 @@ replacement for file-level notices or the license files shipped beside individua
 - **BrainCo RevoLab** — the Revo3 task and USD integration are adapted from
   https://github.com/BrainCoTech/RevoLab under the MIT License. The notice and full license text are retained in
   `source/Gurukul/Gurukul/tasks/direct/brainco_revo/`.
-- **OmniPerception** — `third_party/OmniPerception/` is pinned from
-  https://github.com/aCodeDog/OmniPerception at commit `a1059ae3ffb91ebea2854f8633a28027a0477d1c`. 
+
+## Optional Local Dependencies
+
+- **OmniPerception** — not distributed with Gurukul. LiDAR workflows that use it expect a local checkout at
+  `third_party/OmniPerception/`, pinned from https://github.com/aCodeDog/OmniPerception at commit
+  `a1059ae3ffb91ebea2854f8633a28027a0477d1c`.
 
 ## Research Methods
 
