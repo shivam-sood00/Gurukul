@@ -28,6 +28,8 @@ Gurukul-Isaac-Velocity-Rough-Unitree-Go2-Depth-Distill-v0
 ```bash
 python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Velocity-Rough-Unitree-Go2-Depth-Distill-v0 \
+  --num_envs 16384 \
+  --logger wandb \
   --headless \
   --enable_cameras \
   --agent=rsl_rl_distillation_cfg_entry_point \

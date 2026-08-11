@@ -34,6 +34,8 @@ Train learned writes:
 ```bash
 python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Velocity-Rough-Unitree-Go2-Contact-Trails-v0 \
+  --num_envs 16384 \
+  --logger wandb \
   --headless \
   --agent=rsl_rl_cfg_entry_point \
   --run_name go2_contact_trails
@@ -44,6 +46,8 @@ Train engineered writes for warping/write sanity:
 ```bash
 python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Velocity-Rough-Unitree-Go2-Contact-Trails-v0 \
+  --num_envs 16384 \
+  --logger wandb \
   --headless \
   --agent=rsl_rl_contact_trails_engineered_cfg_entry_point \
   --run_name go2_contact_trails_engineered
@@ -54,6 +58,8 @@ Run the unchanged rough baseline:
 ```bash
 python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Velocity-Rough-Unitree-Go2-v0 \
+  --num_envs 16384 \
+  --logger wandb \
   --headless \
   --agent=rsl_rl_cfg_entry_point \
   --run_name go2_rough_baseline

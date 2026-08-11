@@ -44,6 +44,8 @@ body-frame lateral spacing drops below `0.18 m`.
 ```bash
 python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Velocity-Rough-Unitree-Go2-v0 \
+  --num_envs 16384 \
+  --logger wandb \
   --headless \
   --agent=rsl_rl_cfg_entry_point \
   --run_name go2_rough_ppo
@@ -57,6 +59,8 @@ rough-terrain heightmap observations. Foot-height rewards use the flat-ground fa
 ```bash
 python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Velocity-Flat-Unitree-Go2-v1 \
+  --num_envs 16384 \
+  --logger wandb \
   --headless \
   --agent=rsl_rl_cfg_entry_point \
   --run_name unitree_go2_flat_v1_check
@@ -70,6 +74,8 @@ parity values computed as `0.25 * tau_max / Kp`.
 ```bash
 python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Velocity-Flat-Unitree-Go2-v0-MJLabActionScale \
+  --num_envs 16384 \
+  --logger wandb \
   --headless \
   --agent=rsl_rl_cfg_entry_point \
   --run_name unitree_go2_flat_v0_mjlab_action_scale
@@ -124,7 +130,8 @@ python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Velocity-Rough-Unitree-Go2-v0 \
   --headless \
   --agent=rsl_rl_teacher_cfg_entry_point \
-  --num_envs 4096 \
+  --num_envs 16384 \
+  --logger wandb \
   --run_name go2_rough_teacher
 ```
 
@@ -133,6 +140,8 @@ python scripts/reinforcement_learning/rsl_rl/train.py \
 ```bash
 python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Velocity-Rough-Unitree-Go2-CTS-v0 \
+  --num_envs 16384 \
+  --logger wandb \
   --agent=rsl_rl_cts_cfg_entry_point \
   --headless \
   --run_name go2_rough_cts
@@ -153,7 +162,8 @@ armatures, limits, and action scales match the official BeyondMimic PM01 asset. 
 ```bash
 python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Velocity-Rough-EngineAI-PM01-v0 \
-  --num_envs 4096 \
+  --num_envs 16384 \
+  --logger wandb \
   --headless \
   --run_name engineai_pm01_official_urdf_rough_ppo
 ```

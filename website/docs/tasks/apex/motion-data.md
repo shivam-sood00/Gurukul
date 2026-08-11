@@ -369,6 +369,8 @@ acceleration, frame jumps, foot height, and quaternion normalization.
 ```bash
 python scripts/reinforcement_learning/rsl_rl/train.py \
   --task Gurukul-Isaac-Go2-APEX-Flat-v0 \
+  --num_envs 16384 \
+  --logger wandb \
   --agent rsl_rl_cfg_entry_point \
   --motion-file source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/animal_mocap/hopturn_go2_STMR_resampled_50Hz.npz \
   --headless

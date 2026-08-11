@@ -63,6 +63,7 @@ class EngineAiPm01RoughEnvCfg(LocomotionVelocityRoughEnvCfg):
 
         self.observations.policy.base_ang_vel.scale = 0.25
         self.observations.policy.joint_vel.scale = 0.05
+        self.observations.critic.base_lin_vel.history_length = _HIST_LEN
 
         for name in ("joint_pos", "joint_vel", "actions", "base_ang_vel", "projected_gravity"):
             pol = getattr(self.observations.policy, name)

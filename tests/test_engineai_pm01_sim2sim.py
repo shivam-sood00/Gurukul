@@ -131,6 +131,7 @@ def test_pm01_velocity_source_uses_official_materials_and_preserves_the_24dof_co
     assert 'self.viewer.origin_type = "asset_root"' in env_source
     assert 'self.viewer.asset_name = "robot"' in env_source
     assert "self.decimation = 10" in env_source
+    assert "self.observations.critic.base_lin_vel.history_length = _HIST_LEN" in env_source
     assert "EngineAiPm01SceneCfg" not in env_source
     assert "visual_material" not in flat_env_source
     assert '"J00_HIP_PITCH_L"' in constants_source

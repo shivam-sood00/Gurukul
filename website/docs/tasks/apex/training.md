@@ -58,6 +58,8 @@ Run the grouped two-head critic with:
 ```bash
 python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Go2-APEX-Flat-v0 \
+  --num_envs 16384 \
+  --logger wandb \
   --agent=rsl_rl_multi_critic_cfg_entry_point \
   --headless
 ```
@@ -69,6 +71,8 @@ The custom runner uses the RSL-RL 5.3 actor/critic/storage interface and optimiz
 ```bash
 python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Go2-APEX-Flat-v0 \
+  --num_envs 16384 \
+  --logger wandb \
   --headless \
   --agent=rsl_rl_cfg_entry_point \
   --run_name go2_apex_flat_ppo
@@ -79,6 +83,8 @@ python scripts/reinforcement_learning/rsl_rl/train.py \
 ```bash
 python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Go2-APEX-Flat-Tracker-v0 \
+  --num_envs 16384 \
+  --logger wandb \
   --headless \
   --agent=rsl_rl_cfg_entry_point \
   --run_name go2_apex_flat_tracker
@@ -91,7 +97,7 @@ python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Go2-D1-Arm-APEX-Flat-Tracker-v0 \
   --motion-file source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/go2_d1/wave_hello.npz \
   --headless \
-  --num_envs 4096 \
+  --num_envs 16384 \
   --max_iterations 5000 \
   --logger wandb \
   --wandb_project_name Gurukul-go2-d1 \
@@ -109,7 +115,7 @@ python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Go2-D1-Arm-APEX-Original-DecAP-Teacher-v0 \
   --motion-file source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/go2_d1/wave_hello.npz \
   --headless \
-  --num_envs 4096 \
+  --num_envs 16384 \
   --max_iterations 5000 \
   --logger wandb \
   --wandb_project_name Gurukul-go2-d1 \
@@ -124,7 +130,7 @@ python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Go2-D1-Arm-APEX-Distillation-Student-v0 \
   --motion-file source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/go2_d1/wave_hello.npz \
   --headless \
-  --num_envs 4096 \
+  --num_envs 16384 \
   --max_iterations 5000 \
   --logger wandb \
   --wandb_project_name Gurukul-go2-d1 \
@@ -147,6 +153,8 @@ Train on the walk-then-wave motion with its frame-aligned `skill` observation (`
 python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Go2-D1-Arm-APEX-Flat-Tracker-v0 \
   --motion-file source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/go2_d1/walk_then_wave_hello.npz \
+  --num_envs 16384 \
+  --logger wandb \
   --headless \
   --agent=rsl_rl_cfg_entry_point \
   --run_name go2_d1_apex_walk_then_wave_hello
@@ -159,7 +167,7 @@ python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Go2-D1-Arm-APEX-Flat-Tracker-v0 \
   --motion-file source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/go2_d1/student_showcase.npz \
   --headless \
-  --num_envs 4096 \
+  --num_envs 16384 \
   --max_iterations 5000 \
   --logger wandb \
   --wandb_project_name Gurukul-go2-d1 \
@@ -207,7 +215,7 @@ python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Go2-D1-Arm-APEX-Pick-Stow-Carry-Flat-Tracker-v0 \
   --headless \
   --zero_decap \
-  --num_envs 64 \
+  --num_envs 16384 \
   --max_iterations 5000 \
   --logger wandb \
   --wandb_project_name Gurukul-go2-d1 \
@@ -225,7 +233,7 @@ python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Go2-D1-Arm-APEX-Can-Pick-Carry-Drop-Flat-Tracker-v0 \
   --headless \
   --zero_decap \
-  --num_envs 64 \
+  --num_envs 16384 \
   --max_iterations 5000 \
   --logger wandb \
   --wandb_project_name Gurukul-go2-d1 \
@@ -245,7 +253,7 @@ To learn only the demonstrated Go2+D1 motion, with no object learning surface, u
 python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Go2-D1-Arm-APEX-Pick-Stow-Carry-Robot-Only-Flat-Tracker-v0 \
   --headless \
-  --num_envs 64 \
+  --num_envs 16384 \
   --max_iterations 5000 \
   --logger wandb \
   --wandb_project_name Gurukul-go2-d1 \
@@ -319,7 +327,7 @@ Train the separate manipulation teacher after validating the corrected data and 
 python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Go2-D1-Arm-APEX-Pick-Stow-Carry-Privileged-Teacher-v0 \
   --headless \
-  --num_envs 64 \
+  --num_envs 16384 \
   --max_iterations 5000 \
   --logger wandb \
   --wandb_project_name Gurukul-go2-d1 \
@@ -342,8 +350,9 @@ After the teacher succeeds, distill its 19 direct actions into the separate zero
 python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Go2-D1-Arm-APEX-Pick-Stow-Carry-Distillation-Student-v0 \
   --headless \
-  --num_envs 64 \
+  --num_envs 16384 \
   --max_iterations 5000 \
+  --logger wandb \
   --agent=rsl_rl_distillation_cfg_entry_point \
   --teacher_load_run <privileged_teacher_run_folder_name> \
   --run_name go2_d1_pick_stow_carry_distilled_student_v1
@@ -364,6 +373,8 @@ Distill the Go2 deployable one-step history tracker from a privileged tracker te
 ```bash
 python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-Go2-APEX-Flat-Tracker-One-Step-Future-History-v0 \
+  --num_envs 16384 \
+  --logger wandb \
   --headless \
   --agent=rsl_rl_distillation_cfg_entry_point \
   --teacher_load_run <privileged_tracker_teacher_run_folder_name> \
@@ -375,6 +386,8 @@ Train the B2+Z1 privileged tracker teacher and history student:
 ```bash
 python scripts/reinforcement_learning/rsl_rl/train.py \
   --task=Gurukul-Isaac-B2-Z1-Arm-APEX-Flat-Privileged-Tracker-v0 \
+  --num_envs 16384 \
+  --logger wandb \
   --headless \
   --run_name b2_z1_arm_apex_flat_privileged_tracker
 ```
