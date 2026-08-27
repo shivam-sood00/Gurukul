@@ -819,6 +819,12 @@ def _build_keyboard_velocity_observation(controller: Se2Keyboard, command_name: 
         except Exception:
             return command
 
+        # Keep the command term's own buffer (and thus its debug-vis arrows and any
+        # reward/metric terms that read it) in sync with the live keyboard input.
+        vel_command_b = getattr(command_term, "vel_command_b", None)
+        if isinstance(vel_command_b, torch.Tensor):
+            vel_command_b[:, :3] = command[..., :3].to(vel_command_b.dtype)
+
         posture = getattr(command_term, "posture_command", None)
         if posture is None:
             return command
@@ -2269,7 +2275,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         _set_attr_if_exists(getattr(env_cfg, "terminations", None), "time_out", None)
         commands_cfg = getattr(env_cfg, "commands", None)
         if hasattr(commands_cfg, "base_velocity"):
-            commands_cfg.base_velocity.debug_vis = False
+            # Show the commanded-velocity arrow while teleoperating so the live keyboard
+            # command is visible (the underlying vel_command_b buffer is kept in sync with
+            # the keyboard input in _keyboard_velocity_commands, so the arrow reflects it).
+            commands_cfg.base_velocity.debug_vis = True
             config = Se2KeyboardCfg(
                 v_x_sensitivity=commands_cfg.base_velocity.ranges.lin_vel_x[1],
                 v_y_sensitivity=commands_cfg.base_velocity.ranges.lin_vel_y[1],
