@@ -2277,9 +2277,14 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             )
             keyboard_controller = Se2Keyboard(config)
             keyboard_velocity_active = True
-            env_cfg.observations.policy.velocity_commands = ObsTerm(
-                func=_build_keyboard_velocity_observation(keyboard_controller),
-            )
+            # Override velocity_commands on every observation group that defines it, not just
+            # "policy" -- some agents (e.g. the oracle teacher) resolve their actor input from a
+            # different group (like "critic"), and would otherwise silently ignore keyboard input.
+            for _group_cfg in vars(env_cfg.observations).values():
+                if hasattr(_group_cfg, "velocity_commands"):
+                    _group_cfg.velocity_commands = ObsTerm(
+                        func=_build_keyboard_velocity_observation(keyboard_controller),
+                    )
     go2_d1_live_control = (
         _configure_go2_d1_live_control(env_cfg, keyboard_controller) if args_cli.go2_d1_live_control else None
     )
