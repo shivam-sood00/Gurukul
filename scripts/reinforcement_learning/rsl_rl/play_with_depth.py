@@ -827,21 +827,26 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
     print(f"[INFO]: Loading model checkpoint from: {resume_path}")
     # load previously trained model
+    runner_cfg = agent_cfg.to_dict()
+    # rsl-rl's Logger unconditionally indexes cfg["algorithm"]["rnd_cfg"], but RslRlDistillationAlgorithmCfg
+    # (unlike RslRlPpoAlgorithmCfg) does not define this field. Default it to None so distillation/CombinedDistillation
+    # runs (and any other algorithm cfg lacking rnd_cfg) don't crash with KeyError at runner construction.
+    runner_cfg["algorithm"].setdefault("rnd_cfg", None)
     if agent_cfg.class_name == "OnPolicyRunner":
-        runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+        runner = OnPolicyRunner(env, runner_cfg, log_dir=None, device=agent_cfg.device)
     elif agent_cfg.class_name == "DistillationRunner":
         if use_legacy_distillation_policy:
-            runner = _LegacyDistillationPlayRunner(env, agent_cfg.to_dict(), device=agent_cfg.device)
+            runner = _LegacyDistillationPlayRunner(env, runner_cfg, device=agent_cfg.device)
         else:
-            runner = DistillationRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+            runner = DistillationRunner(env, runner_cfg, log_dir=None, device=agent_cfg.device)
     elif agent_cfg.class_name == "DecAPRunner":
         from decap import DecAPRunner
 
-        runner = DecAPRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+        runner = DecAPRunner(env, runner_cfg, log_dir=None, device=agent_cfg.device)
     elif agent_cfg.class_name == "MultiCriticRunner":
         from multi_critic import MultiCriticRunner
 
-        runner = MultiCriticRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+        runner = MultiCriticRunner(env, runner_cfg, log_dir=None, device=agent_cfg.device)
     else:
         raise ValueError(f"Unsupported runner class: {agent_cfg.class_name}")
     if getattr(runner, "is_legacy_distillation_play_runner", False):
