@@ -404,9 +404,25 @@ def _build_keyboard_velocity_observation(controller: Se2Keyboard, command_cache:
             cache["step"] = step_counter
             cache["command"] = torch.tensor(controller.advance(), dtype=torch.float32, device=env.device).unsqueeze(0)
 
-        if getattr(env, "num_envs", 1) <= 1:
-            return cache["command"]
-        return cache["command"].expand(env.num_envs, -1)
+        command = cache["command"]
+        if getattr(env, "num_envs", 1) > 1:
+            command = command.expand(env.num_envs, -1)
+
+        command_manager = getattr(env, "command_manager", None)
+        if command_manager is None:
+            return command
+        try:
+            command_term = command_manager.get_term("base_velocity")
+        except Exception:
+            return command
+
+        # Keep the command term's own buffer (and thus its debug-vis arrows and any
+        # reward/metric terms that read it) in sync with the live keyboard input.
+        vel_command_b = getattr(command_term, "vel_command_b", None)
+        if isinstance(vel_command_b, torch.Tensor):
+            vel_command_b[:, :3] = command[..., :3].to(vel_command_b.dtype)
+
+        return command
 
     return _keyboard_velocity_commands
 
@@ -735,7 +751,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         env_cfg.scene.num_envs = 1
         env_cfg.terminations.time_out = None
         if hasattr(env_cfg.commands, "base_velocity"):
-            env_cfg.commands.base_velocity.debug_vis = False
+            # Show the commanded-velocity arrow while teleoperating so the live keyboard
+            # command is visible (the underlying vel_command_b buffer is kept in sync with
+            # the keyboard input in _keyboard_velocity_commands, so the arrow reflects it).
+            env_cfg.commands.base_velocity.debug_vis = True
             config = Se2KeyboardCfg(
                 v_x_sensitivity=env_cfg.commands.base_velocity.ranges.lin_vel_x[1],
                 v_y_sensitivity=env_cfg.commands.base_velocity.ranges.lin_vel_y[1],
