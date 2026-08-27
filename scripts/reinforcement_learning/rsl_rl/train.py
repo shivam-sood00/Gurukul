@@ -667,6 +667,10 @@ def main(  # noqa: C901
     # schema in the runner configuration so external loggers (including W&B)
     # receive the actor/critic observations and active reward graph at startup.
     runner_cfg = agent_cfg.to_dict()
+    # rsl-rl's Logger unconditionally indexes cfg["algorithm"]["rnd_cfg"], but RslRlDistillationAlgorithmCfg
+    # (unlike RslRlPpoAlgorithmCfg) does not define this field. Default it to None so distillation/CombinedDistillation
+    # runs (and any other algorithm cfg lacking rnd_cfg) don't crash with KeyError at runner construction.
+    runner_cfg["algorithm"].setdefault("rnd_cfg", None)
     runner_cfg["task_name"] = args_cli.task
     task_setup = collect_task_setup(env.unwrapped, runner_cfg)
     task_setup_path = write_task_setup(log_dir, task_setup)
