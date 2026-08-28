@@ -79,6 +79,15 @@ parser.add_argument(
     help="Enable height-scanner point visualization for tasks using heightmap observations.",
 )
 parser.add_argument(
+    "--depth-cam-debug-vis",
+    action="store_true",
+    default=False,
+    help=(
+        "Enable depth-camera ray-hit visualization for tasks with a scene.depth_camera sensor. "
+        "Requires --enable_cameras."
+    ),
+)
+parser.add_argument(
     "--motion-file",
     type=str,
     default=None,
@@ -797,6 +806,19 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             if args_cli.num_envs is None:
                 env_cfg.scene.num_envs = 1
                 print("[INFO] No --num_envs provided, set num_envs=1 for clearer heightmap visualization.")
+
+    if args_cli.depth_cam_debug_vis:
+        depth_camera_cfg = getattr(env_cfg.scene, "depth_camera", None)
+        if depth_camera_cfg is None:
+            print("[WARN] --depth-cam-debug-vis requested, but env has no `scene.depth_camera` sensor.")
+        elif not args_cli.enable_cameras:
+            print("[WARN] --depth-cam-debug-vis requested, but --enable_cameras was not set; skipping.")
+        else:
+            depth_camera_cfg.debug_vis = True
+            print("[INFO] Enabled depth-camera debug visualization (scene.depth_camera.debug_vis=True).")
+            if args_cli.num_envs is None:
+                env_cfg.scene.num_envs = 1
+                print("[INFO] No --num_envs provided, set num_envs=1 for clearer depth-camera visualization.")
 
     # specify directory for logging experiments
     log_root_path = os.path.join("logs", "rsl_rl", agent_cfg.experiment_name)
