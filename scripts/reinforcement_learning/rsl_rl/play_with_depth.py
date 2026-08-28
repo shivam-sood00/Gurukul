@@ -79,6 +79,15 @@ parser.add_argument(
     help="Enable height-scanner point visualization for tasks using heightmap observations.",
 )
 parser.add_argument(
+    "--depth-cam-debug-vis",
+    action="store_true",
+    default=False,
+    help=(
+        "Enable depth-camera ray-hit visualization for tasks with a scene.depth_camera sensor. "
+        "Requires --enable_cameras."
+    ),
+)
+parser.add_argument(
     "--motion-file",
     type=str,
     default=None,
@@ -404,9 +413,25 @@ def _build_keyboard_velocity_observation(controller: Se2Keyboard, command_cache:
             cache["step"] = step_counter
             cache["command"] = torch.tensor(controller.advance(), dtype=torch.float32, device=env.device).unsqueeze(0)
 
-        if getattr(env, "num_envs", 1) <= 1:
-            return cache["command"]
-        return cache["command"].expand(env.num_envs, -1)
+        command = cache["command"]
+        if getattr(env, "num_envs", 1) > 1:
+            command = command.expand(env.num_envs, -1)
+
+        command_manager = getattr(env, "command_manager", None)
+        if command_manager is None:
+            return command
+        try:
+            command_term = command_manager.get_term("base_velocity")
+        except Exception:
+            return command
+
+        # Keep the command term's own buffer (and thus its debug-vis arrows and any
+        # reward/metric terms that read it) in sync with the live keyboard input.
+        vel_command_b = getattr(command_term, "vel_command_b", None)
+        if isinstance(vel_command_b, torch.Tensor):
+            vel_command_b[:, :3] = command[..., :3].to(vel_command_b.dtype)
+
+        return command
 
     return _keyboard_velocity_commands
 
@@ -735,7 +760,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         env_cfg.scene.num_envs = 1
         env_cfg.terminations.time_out = None
         if hasattr(env_cfg.commands, "base_velocity"):
-            env_cfg.commands.base_velocity.debug_vis = False
+            # Show the commanded-velocity arrow while teleoperating so the live keyboard
+            # command is visible (the underlying vel_command_b buffer is kept in sync with
+            # the keyboard input in _keyboard_velocity_commands, so the arrow reflects it).
+            env_cfg.commands.base_velocity.debug_vis = True
             config = Se2KeyboardCfg(
                 v_x_sensitivity=env_cfg.commands.base_velocity.ranges.lin_vel_x[1],
                 v_y_sensitivity=env_cfg.commands.base_velocity.ranges.lin_vel_y[1],
@@ -778,6 +806,19 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             if args_cli.num_envs is None:
                 env_cfg.scene.num_envs = 1
                 print("[INFO] No --num_envs provided, set num_envs=1 for clearer heightmap visualization.")
+
+    if args_cli.depth_cam_debug_vis:
+        depth_camera_cfg = getattr(env_cfg.scene, "depth_camera", None)
+        if depth_camera_cfg is None:
+            print("[WARN] --depth-cam-debug-vis requested, but env has no `scene.depth_camera` sensor.")
+        elif not args_cli.enable_cameras:
+            print("[WARN] --depth-cam-debug-vis requested, but --enable_cameras was not set; skipping.")
+        else:
+            depth_camera_cfg.debug_vis = True
+            print("[INFO] Enabled depth-camera debug visualization (scene.depth_camera.debug_vis=True).")
+            if args_cli.num_envs is None:
+                env_cfg.scene.num_envs = 1
+                print("[INFO] No --num_envs provided, set num_envs=1 for clearer depth-camera visualization.")
 
     # specify directory for logging experiments
     log_root_path = os.path.join("logs", "rsl_rl", agent_cfg.experiment_name)
@@ -827,21 +868,26 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
     print(f"[INFO]: Loading model checkpoint from: {resume_path}")
     # load previously trained model
+    runner_cfg = agent_cfg.to_dict()
+    # rsl-rl's Logger unconditionally indexes cfg["algorithm"]["rnd_cfg"], but RslRlDistillationAlgorithmCfg
+    # (unlike RslRlPpoAlgorithmCfg) does not define this field. Default it to None so distillation/CombinedDistillation
+    # runs (and any other algorithm cfg lacking rnd_cfg) don't crash with KeyError at runner construction.
+    runner_cfg["algorithm"].setdefault("rnd_cfg", None)
     if agent_cfg.class_name == "OnPolicyRunner":
-        runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+        runner = OnPolicyRunner(env, runner_cfg, log_dir=None, device=agent_cfg.device)
     elif agent_cfg.class_name == "DistillationRunner":
         if use_legacy_distillation_policy:
-            runner = _LegacyDistillationPlayRunner(env, agent_cfg.to_dict(), device=agent_cfg.device)
+            runner = _LegacyDistillationPlayRunner(env, runner_cfg, device=agent_cfg.device)
         else:
-            runner = DistillationRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+            runner = DistillationRunner(env, runner_cfg, log_dir=None, device=agent_cfg.device)
     elif agent_cfg.class_name == "DecAPRunner":
         from decap import DecAPRunner
 
-        runner = DecAPRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+        runner = DecAPRunner(env, runner_cfg, log_dir=None, device=agent_cfg.device)
     elif agent_cfg.class_name == "MultiCriticRunner":
         from multi_critic import MultiCriticRunner
 
-        runner = MultiCriticRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+        runner = MultiCriticRunner(env, runner_cfg, log_dir=None, device=agent_cfg.device)
     else:
         raise ValueError(f"Unsupported runner class: {agent_cfg.class_name}")
     if getattr(runner, "is_legacy_distillation_play_runner", False):
