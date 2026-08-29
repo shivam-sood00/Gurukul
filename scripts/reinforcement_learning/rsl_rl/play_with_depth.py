@@ -163,6 +163,18 @@ parser.add_argument(
     default=100,
     help="Print depth min/max stats every N env steps (0 disables printing).",
 )
+parser.add_argument(
+    "--terrain_row",
+    type=int,
+    default=None,
+    help="Force all play environments to spawn on this generated-terrain row.",
+)
+parser.add_argument(
+    "--terrain_col",
+    type=int,
+    default=None,
+    help="Force all play environments to spawn on this generated-terrain column.",
+)
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
 # append AppLauncher cli args
@@ -846,6 +858,25 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
     # create isaac environment
     env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
+    if args_cli.terrain_row is not None or args_cli.terrain_col is not None:
+        terrain = getattr(env.unwrapped.scene, "terrain", None)
+        terrain_origins = getattr(terrain, "terrain_origins", None)
+        if terrain is None or terrain_origins is None:
+            print("[WARN] --terrain_row/--terrain_col requested, but this env has no generated terrain origins.")
+        else:
+            num_rows, num_cols = terrain_origins.shape[:2]
+            row = 0 if args_cli.terrain_row is None else int(args_cli.terrain_row)
+            col = 0 if args_cli.terrain_col is None else int(args_cli.terrain_col)
+            if not (0 <= row < num_rows and 0 <= col < num_cols):
+                raise ValueError(
+                    f"Requested terrain box row={row}, col={col}, but valid range is "
+                    f"row=[0, {num_rows - 1}], col=[0, {num_cols - 1}]."
+                )
+            terrain.terrain_levels[:] = row
+            terrain.terrain_types[:] = col
+            terrain.env_origins[:] = terrain.terrain_origins[row, col]
+            env.reset()
+            print(f"[INFO] Forced terrain spawn box: row={row}, col={col}, origin={terrain.env_origins[0].tolist()}")
 
     # convert to single-agent instance if required by the RL algorithm
     if isinstance(env.unwrapped, DirectMARLEnv):

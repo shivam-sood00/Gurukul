@@ -1,5 +1,6 @@
 import math
 
+from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
 from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import SceneEntityCfg
@@ -38,8 +39,9 @@ GO2_DEPTH_CAMERA_CFG = RayCasterCameraCfg(
     prim_path="{ENV_REGEX_NS}/Robot/base",
     data_types=["distance_to_camera"],
     offset=RayCasterCameraCfg.OffsetCfg(
-        pos=(0.33, 0.0, 0.08),
-        rot=_quat_from_euler_xyz_deg(180.0, 70.0, -90.0),
+        # pos=(0.33, 0.0, 0.08),
+        pos=(0.048 + 0.32715, 0.0 - 0.00003, 0.025 + 0.04297), # Eyeballed from the real robot and added to the URDF base-to-camera mount offset
+        rot=_quat_from_euler_xyz_deg(180.0, 70.0, -90.0), # Second value means 20 degrees downward facing from horizontal axis, TUNE THIS! 
         convention="ros",
     ),
     depth_clipping_behavior="max",
@@ -60,7 +62,7 @@ class DepthCameraObservationsCfg(ObsGroup):
     """Depth camera observations for student distillation."""
 
     depth_image = ObsTerm(
-        func=mdp.depth_image_features,
+        func=mdp.parkour_depth_image_features,
         params={
             "sensor_cfg": SceneEntityCfg("depth_camera"),
             "data_type": "distance_to_camera",
@@ -70,6 +72,15 @@ class DepthCameraObservationsCfg(ObsGroup):
             "crop_right": 4,
             "resize": (58, 87),
             "normalize": True,
+            "min_valid_distance": 0.15,
+            "edge_threshold": 0.08,
+            "edge_corruption_prob": 0.5,
+            "hole_noise_resolution": (8, 12),
+            "hole_threshold": 0.82,
+            "hole_update_alpha": 0.02,
+            "blind_spot_cols_range": (1, 5),
+            "blur_kernel_size": 3,
+            "blur_sigma": 1.0,
         },
         clip=(-1.0, 1.0),
         scale=1.0,
@@ -108,6 +119,23 @@ class UnitreeGo2RoughDepthDistillEnvCfg(UnitreeGo2RoughEnvCfg):
         self.scene.depth_camera.update_period = self.sim.dt * self.decimation
         self.observations.depth_camera = DepthCameraObservationsCfg()
         self.observations.terrain_heightmap = TerrainHeightmapObservationsCfg()
+        self.events.randomize_depth_camera_offset = EventTerm(
+            func=mdp.randomize_raycaster_camera_offset,
+            mode="reset",
+            params={
+                "sensor_cfg": SceneEntityCfg("depth_camera"),
+                "position_range": {
+                    "x": (-0.015, 0.015),
+                    "y": (-0.01, 0.01),
+                    "z": (-0.01, 0.01),
+                },
+                "rotation_range_deg": {
+                    "roll": (-2.0, 2.0),
+                    "pitch": (-3.0, 3.0),
+                    "yaw": (-2.0, 2.0),
+                },
+            },
+        )
 
         # START-style feet-edge penalty for safer foothold selection.
         self.rewards.feet_edge.weight = -1.0
