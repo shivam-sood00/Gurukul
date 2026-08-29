@@ -434,6 +434,138 @@ def depth_image_features(
     return depth.reshape(depth.shape[0], -1)
 
 
+def _gaussian_blur_depth(depth: torch.Tensor, kernel_size: int, sigma: float) -> torch.Tensor:
+    if kernel_size <= 1:
+        return depth
+    if kernel_size % 2 == 0:
+        kernel_size += 1
+    sigma = float(sigma) if sigma > 0.0 else max(float(kernel_size) / 6.0, 1.0e-6)
+    coords = torch.arange(kernel_size, device=depth.device, dtype=depth.dtype) - (kernel_size - 1) * 0.5
+    kernel_1d = torch.exp(-0.5 * torch.square(coords / sigma))
+    kernel_1d = kernel_1d / kernel_1d.sum()
+    kernel_2d = torch.outer(kernel_1d, kernel_1d).view(1, 1, kernel_size, kernel_size)
+    return F.conv2d(depth.unsqueeze(1), kernel_2d, padding=kernel_size // 2).squeeze(1)
+
+# Inspired from the paper "Parkour in the wild: Learning a general and extensible agile
+# locomotion policy using multi-expert distillation and RL Fine-tuning" by Rudin et al.
+def parkour_depth_image_features(
+    env: ManagerBasedEnv,
+    sensor_cfg: SceneEntityCfg,
+    data_type: str = "distance_to_camera",
+    crop_top: int = 0,
+    crop_bottom: int = 0,
+    crop_left: int = 0,
+    crop_right: int = 0,
+    resize: tuple[int, int] | None = None,
+    normalize: bool = True,
+    min_valid_distance: float = 0.15,
+    edge_threshold: float = 0.08,
+    edge_corruption_prob: float = 0.5,
+    hole_noise_resolution: tuple[int, int] = (8, 12),
+    hole_threshold: float = 0.82,
+    hole_update_alpha: float = 0.02,
+    blind_spot_cols_range: tuple[int, int] = (1, 5),
+    blur_kernel_size: int = 3,
+    blur_sigma: float = 1.0,
+) -> torch.Tensor:
+    """Return flattened depth features using the Parkour D435i-style noise model."""
+    camera_sensor = env.scene[sensor_cfg.name]
+    depth = camera_sensor.data.output[data_type]
+    if depth.ndim == 4 and depth.shape[-1] == 1:
+        depth = depth[..., 0]
+
+    max_distance = float(getattr(camera_sensor.cfg, "max_distance", 0.0))
+    fill_distance = max_distance if max_distance > 0.0 else 0.0
+    depth = torch.nan_to_num(depth, nan=fill_distance, posinf=fill_distance, neginf=0.0).clone()
+
+    if min_valid_distance > 0.0:
+        depth = torch.where(depth < float(min_valid_distance), torch.full_like(depth, fill_distance), depth)
+    if max_distance > 0.0:
+        depth = depth.clamp(0.0, max_distance)
+    else:
+        depth = depth.clamp_min(0.0)
+
+    if edge_threshold > 0.0 and edge_corruption_prob > 0.0 and depth.shape[-2] > 1 and depth.shape[-1] > 1:
+        grad_x = F.pad(torch.abs(depth[:, :, 1:] - depth[:, :, :-1]), (0, 1, 0, 0))
+        grad_y = F.pad(torch.abs(depth[:, 1:, :] - depth[:, :-1, :]), (0, 0, 0, 1))
+        edge_mask = (torch.maximum(grad_x, grad_y) > float(edge_threshold)).unsqueeze(1).float()
+        edge_mask = F.max_pool2d(edge_mask, kernel_size=3, stride=1, padding=1).squeeze(1).bool()
+        corrupt_mask = edge_mask & (torch.rand_like(depth) < float(edge_corruption_prob))
+        shuffled = torch.roll(depth, shifts=1, dims=-1)
+        empty_mask = torch.rand_like(depth) < 0.5
+        corrupted = torch.where(empty_mask, torch.full_like(depth, fill_distance), shuffled)
+        depth = torch.where(corrupt_mask, corrupted, depth)
+
+    hole_h, hole_w = max(1, int(hole_noise_resolution[0])), max(1, int(hole_noise_resolution[1]))
+    hole_threshold = float(hole_threshold)
+    if hole_threshold < 1.0:
+        cache_name = f"_parkour_depth_hole_noise_{sensor_cfg.name}"
+        cached_noise = getattr(env, cache_name, None)
+        if (
+            cached_noise is None
+            or cached_noise.shape != (env.num_envs, 1, hole_h, hole_w)
+            or cached_noise.device != depth.device
+        ):
+            cached_noise = torch.rand((env.num_envs, 1, hole_h, hole_w), device=depth.device, dtype=depth.dtype)
+        else:
+            alpha = min(max(float(hole_update_alpha), 0.0), 1.0)
+            cached_noise = (1.0 - alpha) * cached_noise + alpha * torch.rand_like(cached_noise)
+        setattr(env, cache_name, cached_noise)
+        hole_noise = F.interpolate(
+            cached_noise,
+            size=depth.shape[-2:],
+            mode="bilinear",
+            align_corners=False,
+        ).squeeze(1)
+        depth = torch.where(hole_noise > hole_threshold, torch.full_like(depth, fill_distance), depth)
+
+    blind_min, blind_max = int(blind_spot_cols_range[0]), int(blind_spot_cols_range[1])
+    if blind_max > 0 and depth.shape[-1] > 0:
+        blind_min = max(0, blind_min)
+        blind_max = max(blind_min, blind_max)
+        blind_cols = torch.randint(
+            blind_min,
+            blind_max + 1,
+            (depth.shape[0],),
+            device=depth.device,
+        )
+        col_ids = torch.arange(depth.shape[-1], device=depth.device).view(1, 1, -1)
+        blind_mask = col_ids < blind_cols.view(-1, 1, 1)
+        depth = torch.where(blind_mask, torch.full_like(depth, fill_distance), depth)
+
+    depth = _gaussian_blur_depth(depth, int(blur_kernel_size), float(blur_sigma))
+
+    height, width = depth.shape[-2], depth.shape[-1]
+    top = max(0, int(crop_top))
+    bottom = max(0, int(crop_bottom))
+    left = max(0, int(crop_left))
+    right = max(0, int(crop_right))
+
+    if top + bottom >= height:
+        top, bottom = 0, 0
+    if left + right >= width:
+        left, right = 0, 0
+
+    row_end = height - bottom if bottom > 0 else height
+    col_end = width - right if right > 0 else width
+    depth = depth[:, top:row_end, left:col_end]
+
+    if resize is not None:
+        target_h, target_w = int(resize[0]), int(resize[1])
+        if target_h > 0 and target_w > 0 and (depth.shape[-2] != target_h or depth.shape[-1] != target_w):
+            depth = F.interpolate(
+                depth.unsqueeze(1),
+                size=(target_h, target_w),
+                mode="bilinear",
+                align_corners=False,
+            ).squeeze(1)
+
+    if normalize and max_distance > 0.0:
+        depth = depth / max_distance - 0.5
+
+    return depth.reshape(depth.shape[0], -1)
+
+
 def lidar_scan_distances(
     env: ManagerBasedEnv,
     sensor_cfg: SceneEntityCfg = SceneEntityCfg("lidar"),

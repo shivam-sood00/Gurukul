@@ -129,6 +129,66 @@ def randomize_com_positions(
     asset.root_physx_view.set_coms(com_offsets, env_ids)
 
 
+def randomize_raycaster_camera_offset(
+    env: ManagerBasedEnv,
+    env_ids: torch.Tensor | None,
+    sensor_cfg: SceneEntityCfg,
+    position_range: dict[str, tuple[float, float]],
+    rotation_range_deg: dict[str, tuple[float, float]],
+):
+    """Randomize a RayCasterCamera mount offset relative to its configured nominal offset.
+
+    Position ranges are additive metre offsets in the parent prim frame. Rotation ranges are additive XYZ Euler
+    perturbations in degrees around the configured camera offset orientation.
+    """
+    sensor = env.scene[sensor_cfg.name]
+    if env_ids is None:
+        env_ids = torch.arange(env.num_envs, device=env.device, dtype=torch.long)
+    else:
+        env_ids = torch.as_tensor(env_ids, device=env.device, dtype=torch.long).flatten()
+    if env_ids.numel() == 0:
+        return
+
+    offset_pos = getattr(sensor, "_offset_pos", None)
+    offset_quat = getattr(sensor, "_offset_quat", None)
+    if offset_pos is None or offset_quat is None:
+        raise AttributeError(
+            f"Sensor '{sensor_cfg.name}' does not expose RayCasterCamera offset buffers needed for randomization."
+        )
+
+    nominal_pos = getattr(sensor, "_nominal_offset_pos", None)
+    if nominal_pos is None:
+        nominal_pos = offset_pos.detach().clone()
+        sensor._nominal_offset_pos = nominal_pos  # noqa: SLF001
+    nominal_quat = getattr(sensor, "_nominal_offset_quat", None)
+    if nominal_quat is None:
+        nominal_quat = offset_quat.detach().clone()
+        sensor._nominal_offset_quat = nominal_quat  # noqa: SLF001
+
+    pos_ranges = torch.tensor(
+        [position_range.get(axis, (0.0, 0.0)) for axis in ("x", "y", "z")],
+        device=env.device,
+        dtype=offset_pos.dtype,
+    )
+    pos_delta = math_utils.sample_uniform(
+        pos_ranges[:, 0], pos_ranges[:, 1], (env_ids.numel(), 3), device=env.device
+    ).to(dtype=offset_pos.dtype)
+    offset_pos[env_ids] = nominal_pos[env_ids] + pos_delta
+
+    rot_ranges_deg = torch.tensor(
+        [rotation_range_deg.get(axis, (0.0, 0.0)) for axis in ("roll", "pitch", "yaw")],
+        device=env.device,
+        dtype=offset_quat.dtype,
+    )
+    rot_delta = torch.deg2rad(
+        math_utils.sample_uniform(
+            rot_ranges_deg[:, 0], rot_ranges_deg[:, 1], (env_ids.numel(), 3), device=env.device
+        ).to(dtype=offset_quat.dtype)
+    )
+    delta_quat = math_utils.quat_from_euler_xyz(rot_delta[:, 0], rot_delta[:, 1], rot_delta[:, 2])
+    offset_quat[env_ids] = math_utils.quat_mul(nominal_quat[env_ids], delta_quat)
+
+
 """
 Internal helper functions.
 """
