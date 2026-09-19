@@ -189,6 +189,7 @@ installed_version = metadata.version("rsl-rl-lib")
 
 """Rest everything follows."""
 
+import copy
 import os
 import time
 
@@ -242,6 +243,31 @@ from legacy_checkpoint import load_checkpoint_for_play
 from rl_utils import camera_follow
 
 # PLACEHOLDER: Extension template (do not remove this comment)
+
+
+def _export_depth_policy_as_onnx(policy_nn, normalizer, path: str, filename: str = "policy.onnx"):
+    """Export feed-forward depth students without assuming an indexable MLP actor."""
+    student = getattr(policy_nn, "student", None)
+    if getattr(policy_nn, "is_recurrent", False) or not hasattr(student, "total_obs_dim"):
+        return export_policy_as_onnx(policy_nn, normalizer=normalizer, path=path, filename=filename)
+
+    # Export a copy so playback keeps its device, parameters, and training mode.
+    actor = copy.deepcopy(student).cpu().eval()
+    obs_normalizer = copy.deepcopy(normalizer).cpu().eval() if normalizer is not None else torch.nn.Identity()
+    model = torch.nn.Sequential(obs_normalizer, actor).eval()
+    obs = torch.zeros(1, int(student.total_obs_dim))
+    os.makedirs(path, exist_ok=True)
+    torch.onnx.export(
+        model,
+        obs,
+        os.path.join(path, filename),
+        export_params=True,
+        opset_version=11,
+        input_names=["obs"],
+        output_names=["actions"],
+        dynamic_axes={},
+        dynamo=False,
+    )
 
 
 def _resolve_motion_source_path(path: str) -> str:
@@ -922,7 +948,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     except Exception as exc:
         print(f"[WARN] Skipping JIT export for policy type {type(policy_nn).__name__}: {exc}")
     try:
-        export_policy_as_onnx(policy_nn, normalizer=normalizer, path=export_model_dir, filename="policy.onnx")
+        _export_depth_policy_as_onnx(policy_nn, normalizer=normalizer, path=export_model_dir, filename="policy.onnx")
     except Exception as exc:
         print(f"[WARN] Skipping ONNX export for policy type {type(policy_nn).__name__}: {exc}")
 
