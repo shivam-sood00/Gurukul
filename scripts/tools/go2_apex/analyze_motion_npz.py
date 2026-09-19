@@ -208,7 +208,9 @@ def add_issue(
         issues.append(Issue(severity, metric, value, threshold, frame, detail))
 
 
-def analyze_motion(path: Path, motion: dict[str, Any], args: argparse.Namespace) -> tuple[dict[str, Any], list[Issue], dict[str, np.ndarray]]:
+def analyze_motion(
+    path: Path, motion: dict[str, Any], args: argparse.Namespace
+) -> tuple[dict[str, Any], list[Issue], dict[str, np.ndarray]]:
     fps = float(motion["fps"])
     dt = 1.0 / fps
     joint_pos = motion["joint_pos"]
@@ -357,7 +359,9 @@ def analyze_motion(path: Path, motion: dict[str, Any], args: argparse.Namespace)
 
 def write_event_csv(path: Path, metrics: dict[str, np.ndarray], issues: list[Issue], top_k: int) -> None:
     rows = []
-    interesting = ["base_acc_xy", "base_vel_mismatch", "max_abs_joint_acc", "joint_delta", "max_foot_speed", "min_foot_z"]
+    interesting = [
+        "base_acc_xy", "base_vel_mismatch", "max_abs_joint_acc", "joint_delta", "max_foot_speed", "min_foot_z"
+    ]
     for metric_name in interesting:
         values = metrics[metric_name]
         ranked_values = -values if metric_name == "min_foot_z" else values
@@ -384,7 +388,9 @@ def write_event_csv(path: Path, metrics: dict[str, np.ndarray], issues: list[Iss
             writer.writerow(issue.__dict__)
 
 
-def plot_motion(path: Path, motion: dict[str, Any], metrics: dict[str, np.ndarray], output_path: Path, dpi: int) -> None:
+def plot_motion(
+    path: Path, motion: dict[str, Any], metrics: dict[str, np.ndarray], output_path: Path, dpi: int
+) -> None:
     fps = float(motion["fps"])
     frame_count = int(motion["joint_pos"].shape[0])
     time = np.arange(frame_count, dtype=np.float32) / fps

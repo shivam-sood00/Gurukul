@@ -13,9 +13,13 @@ a more user-friendly way.
 """Launch Isaac Sim Simulator first."""
 
 import argparse
+import os
 import sys
 
 from isaaclab.app import AppLauncher
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from gamepad_compat import prepare_gamepad_mappings
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Train an RL agent with skrl.")
@@ -82,13 +86,13 @@ if args_cli.video:
 sys.argv = [sys.argv[0]] + hydra_args
 
 # launch omniverse app
+prepare_gamepad_mappings(headless=args_cli.headless)
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
 """Rest everything follows."""
 
 import logging
-import os
 import random
 import time
 from datetime import datetime

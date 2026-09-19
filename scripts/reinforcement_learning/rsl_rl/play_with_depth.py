@@ -10,6 +10,7 @@
 import argparse
 import importlib.metadata as metadata
 import math
+import os
 import re
 import sys
 import tempfile
@@ -17,6 +18,9 @@ from dataclasses import MISSING
 from types import SimpleNamespace
 
 from isaaclab.app import AppLauncher
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from gamepad_compat import prepare_gamepad_mappings
 
 # local imports
 import cli_args  # isort: skip
@@ -44,9 +48,12 @@ parser.add_argument("--keyboard", action="store_true", default=False, help="Whet
 parser.add_argument(
     "--camera_follow_mode",
     type=str,
-    default="follow",
-    choices=["none", "follow", "isometric", "topdown"],
-    help="Viewport camera follow mode.",
+    default="auto",
+    choices=["auto", "mouse", "none", "follow", "isometric", "topdown"],
+    help=(
+        "'auto' keeps the existing follow view with mouse steering; "
+        "'mouse'/'none' use a free camera, and the remaining modes follow the robot."
+    ),
 )
 parser.add_argument(
     "--camera_smooth_window",
@@ -180,6 +187,7 @@ if not args_cli.no_depth_vis:
 sys.argv = [sys.argv[0]] + hydra_args
 
 # launch omniverse app
+prepare_gamepad_mappings(headless=args_cli.headless)
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
@@ -190,7 +198,6 @@ installed_version = metadata.version("rsl-rl-lib")
 """Rest everything follows."""
 
 import copy
-import os
 import time
 
 import gymnasium as gym
@@ -238,9 +245,8 @@ from rsl_rl_config_compat import migrate_custom_policy_cfg
 
 import Gurukul.tasks  # noqa: F401  # isort: skip
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from legacy_checkpoint import load_checkpoint_for_play
-from rl_utils import camera_follow
+from rl_utils import camera_follow, enable_free_camera, enable_mouse_camera
 
 # PLACEHOLDER: Extension template (do not remove this comment)
 
@@ -957,9 +963,15 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # reset environment
     obs = env.get_observations()
     timestep = 0
-    if args_cli.camera_follow_mode != "none":
+    camera_follow_mode = "follow" if args_cli.camera_follow_mode == "auto" else args_cli.camera_follow_mode
+    if camera_follow_mode in ("mouse", "none"):
+        enable_free_camera(env)
+        camera_follow_mode = "none"
+        print("[INFO] Free camera enabled from the starting view; use the viewport mouse controls to move it.")
+    else:
+        enable_mouse_camera(env)
         print(
-            f"[INFO] Camera follow enabled: mode={args_cli.camera_follow_mode}, "
+            f"[INFO] Camera follow with mouse steering enabled: mode={camera_follow_mode}, "
             f"smooth_window={max(1, args_cli.camera_smooth_window)}"
         )
     depth_window_name = "Depth Camera (env index {})".format(args_cli.depth_env_index)
@@ -1047,10 +1059,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         if args_cli.max_steps is not None and timestep >= args_cli.max_steps:
             break
 
-        if args_cli.camera_follow_mode != "none":
+        if camera_follow_mode != "none":
             camera_follow(
                 env,
-                mode=args_cli.camera_follow_mode,
+                mode=camera_follow_mode,
                 window_size=args_cli.camera_smooth_window,
                 env_index=0,
             )

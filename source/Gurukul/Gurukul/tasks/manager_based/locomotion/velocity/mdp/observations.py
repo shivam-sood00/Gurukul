@@ -29,6 +29,51 @@ def cts_teacher_role(
     return role
 
 
+def pm01_amp_state(
+    env: ManagerBasedEnv,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    waist_joint_name: str = "J12_WAIST_YAW",
+    reference_waist_column: int = 2,
+) -> torch.Tensor:
+    """Return EngineAI's 26-D PM01 AMP frame in articulation joint order.
+
+    The official discriminator uses the legacy 23 movable joints (head yaw is
+    excluded), neutralizes waist yaw, and appends base-frame linear velocity.
+
+    ``reference_waist_column`` is where ``waist_joint_name`` sits in EngineAI's
+    reference archive. The resolved selection must agree, otherwise this robot's
+    articulation order differs from the clip's and every discriminator channel is
+    permuted -- a mismatch that trains without error and silently ruins the prior.
+    """
+    asset: Articulation = env.scene[asset_cfg.name]
+    joint_ids = asset_cfg.joint_ids
+    if isinstance(joint_ids, slice) and joint_ids == slice(None):
+        resolved_joint_ids = torch.arange(asset.num_joints, device=asset.device, dtype=torch.long)
+    else:
+        resolved_joint_ids = torch.as_tensor(joint_ids, device=asset.device, dtype=torch.long)
+    joint_pos = asset.data.joint_pos[:, resolved_joint_ids].clone()
+
+    cache_name = "_pm01_amp_waist_column"
+    waist_column = getattr(env, cache_name, None)
+    if waist_column is None:
+        waist_ids = asset.find_joints(waist_joint_name, preserve_order=True)[0]
+        if len(waist_ids) != 1:
+            raise ValueError(f"Expected one PM01 waist joint named {waist_joint_name}, found {len(waist_ids)}.")
+        waist_matches = torch.where(resolved_joint_ids == int(waist_ids[0]))[0]
+        if waist_matches.numel() != 1:
+            raise ValueError(f"PM01 AMP joint selection must contain {waist_joint_name} exactly once.")
+        waist_column = int(waist_matches.item())
+        if waist_column != int(reference_waist_column):
+            raise ValueError(
+                f"PM01 AMP joint order mismatch: {waist_joint_name} resolved to column {waist_column}, but "
+                f"EngineAI's reference stores it at column {reference_waist_column}. The robot's articulation "
+                "order does not match the clip."
+            )
+        setattr(env, cache_name, waist_column)
+    joint_pos[:, waist_column] = 0.0
+    return torch.cat((joint_pos * 9.0, asset.data.root_lin_vel_b * 7.0), dim=-1)
+
+
 def joint_pos_rel_without_wheel(
     env: ManagerBasedEnv,
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
@@ -224,6 +269,7 @@ def arm_ee_target_error_b(
 
 def arm_motion_state(env: ManagerBasedEnv) -> torch.Tensor:
     """Return privileged scripted-arm curriculum state: enabled, difficulty, and stage."""
+
     def _state_column(attr_name: str, default: float) -> torch.Tensor:
         value = getattr(env, attr_name, default)
         if isinstance(value, torch.Tensor):

@@ -165,6 +165,10 @@ Convert the locally installed CSV folders:
 python source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/apex_batch_csv_to_motion_npz.py
 ```
 
+The default patterns search selected collections under `imitation_data/` and preserve that subpath under
+`npz/`. Use `--include '<collection>/*.csv'` for another collection; patterns are relative to
+`--input-root`. `--strict` returns a non-zero status if no CSVs match or any conversion fails.
+
 Convert Go2+D1 CSVs:
 
 ```bash

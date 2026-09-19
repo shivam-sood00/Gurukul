@@ -62,8 +62,9 @@ UNITREE_GO2_VELOCITY_MJLAB_V1_CFG = UNITREE_GO2_CFG.replace(
         joint_pos={
             ".*thigh_joint": 0.9,
             ".*calf_joint": -1.8,
-            ".*R_hip_joint": 0.1,
-            ".*L_hip_joint": -0.1,
+            # Keep the repository's Go2 hip convention used by UNITREE_GO2_CFG.
+            ".*R_hip_joint": -0.1,
+            ".*L_hip_joint": 0.1,
         },
         joint_vel={".*": 0.0},
     ),

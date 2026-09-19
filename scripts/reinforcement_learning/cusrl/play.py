@@ -8,6 +8,9 @@ import sys
 
 from isaaclab.app import AppLauncher
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from gamepad_compat import prepare_gamepad_mappings
+
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Evaluate an RL agent with CusRL.")
 parser.add_argument("--video", action="store_true", default=False, help="Record videos during training.")
@@ -42,6 +45,7 @@ if args_cli.video:
 sys.argv = [sys.argv[0]] + hydra_args
 
 # launch omniverse app
+prepare_gamepad_mappings(headless=args_cli.headless)
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
@@ -68,13 +72,16 @@ from isaaclab_tasks.utils.hydra import hydra_task_config  # noqa: F401
 import Gurukul.tasks  # noqa: F401  # isort: skip
 
 # local imports
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from rl_utils import camera_follow
+from rl_utils import camera_follow, enable_mouse_camera
 
 
-class CameraFollowPlayerHook(cusrl.Player.Hook):
+class CameraPlayerHook(cusrl.Player.Hook):
     def step(self, step: int, transition: dict, metrics: dict):
-        camera_follow(self.player.environment)
+        # CusRL resets inside run_playing_loop; initialize the view once the spawn pose is available.
+        if step == 0:
+            enable_mouse_camera(self.player.environment)
+        if args_cli.keyboard:
+            camera_follow(self.player.environment)
 
 
 @hydra_task_config(args_cli.task, args_cli.agent)
@@ -160,8 +167,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     player.agent.export(output_dir=export_model_dir, target_format="onnx", verbose=args_cli.verbose)
     player.agent.export(output_dir=export_model_dir, target_format="jit", verbose=args_cli.verbose)
 
-    if args_cli.keyboard:
-        player.register_hook(CameraFollowPlayerHook())
+    player.register_hook(CameraPlayerHook())
 
     # run playing loop
     player.run_playing_loop()

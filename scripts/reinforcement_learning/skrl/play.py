@@ -13,9 +13,13 @@ a more user-friendly way.
 """Launch Isaac Sim Simulator first."""
 
 import argparse
+import os
 import sys
 
 from isaaclab.app import AppLauncher
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from gamepad_compat import prepare_gamepad_mappings
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Play a checkpoint of an RL agent from skrl.")
@@ -69,12 +73,12 @@ if args_cli.video:
 # clear out sys.argv for Hydra
 sys.argv = [sys.argv[0]] + hydra_args
 # launch omniverse app
+prepare_gamepad_mappings(headless=args_cli.headless)
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
 """Rest everything follows."""
 
-import os
 import random
 import time
 
@@ -113,6 +117,9 @@ from isaaclab_tasks.utils import get_checkpoint_path
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
 import Gurukul.tasks  # noqa: F401  # isort: skip
+
+# local imports
+from rl_utils import enable_mouse_camera
 
 # PLACEHOLDER: Extension template (do not remove this comment)
 
@@ -210,6 +217,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, expe
 
     # reset environment
     obs, _ = env.reset()
+    enable_mouse_camera(env)
     timestep = 0
     # simulate environment
     while simulation_app.is_running():

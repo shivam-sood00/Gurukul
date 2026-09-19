@@ -61,7 +61,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--strict",
         action="store_true",
-        help="Return non-zero exit status if any file fails conversion.",
+        help="Return non-zero exit status if no CSV files match or any file fails conversion.",
     )
     parser.add_argument(
         "--ground-align-foot-height",
@@ -94,7 +94,7 @@ def main() -> int:
     csv_files = collect_csv_files(args.input_root, patterns, args.all_csv)
     if len(csv_files) == 0:
         print("No CSV files found for conversion.")
-        return 0
+        return 1 if args.strict else 0
 
     converted = 0
     skipped = 0

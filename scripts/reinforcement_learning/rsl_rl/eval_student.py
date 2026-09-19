@@ -21,6 +21,9 @@ from typing import Any
 
 from isaaclab.app import AppLauncher
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from gamepad_compat import prepare_gamepad_mappings
+
 # local imports
 import cli_args  # isort: skip
 
@@ -110,6 +113,7 @@ args_cli, hydra_args = parser.parse_known_args()
 # Evaluation should not require camera rendering unless the user explicitly enables it through AppLauncher args.
 sys.argv = [sys.argv[0]] + hydra_args
 
+prepare_gamepad_mappings(headless=args_cli.headless)
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
@@ -135,7 +139,6 @@ from rsl_rl_config_compat import migrate_custom_policy_cfg
 
 import Gurukul.tasks  # noqa: F401  # isort: skip
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from legacy_checkpoint import load_checkpoint_for_play
 
 installed_version = metadata.version("rsl-rl-lib")

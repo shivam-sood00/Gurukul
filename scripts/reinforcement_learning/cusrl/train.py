@@ -11,6 +11,7 @@ from isaaclab.app import AppLauncher
 
 # local imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from gamepad_compat import prepare_gamepad_mappings
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Train an RL agent with CusRL.")
@@ -47,6 +48,7 @@ if os.environ.get("LOCAL_RANK") is not None:
     args_cli.device = f"cuda:{os.environ['LOCAL_RANK']}"
 
 # launch omniverse app
+prepare_gamepad_mappings(headless=args_cli.headless)
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 

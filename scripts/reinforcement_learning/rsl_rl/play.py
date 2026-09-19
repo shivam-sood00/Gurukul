@@ -8,12 +8,16 @@
 """Launch Isaac Sim Simulator first."""
 
 import argparse
+import os
 import re
 import sys
 import tempfile
 from collections.abc import Mapping, Sequence
 
 from isaaclab.app import AppLauncher
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from gamepad_compat import prepare_gamepad_mappings
 
 # local imports
 import cli_args  # isort: skip
@@ -37,7 +41,15 @@ parser.add_argument(
     help="Use the pre-trained checkpoint from Nucleus.",
 )
 parser.add_argument("--real-time", action="store_true", default=False, help="Run in real-time, if possible.")
-parser.add_argument("--keyboard", action="store_true", default=False, help="Whether to use keyboard.")
+input_group = parser.add_mutually_exclusive_group()
+input_group.add_argument("--keyboard", action="store_true", default=False, help="Use keyboard commands.")
+input_group.add_argument(
+    "--gamepad",
+    action="store_true",
+    default=False,
+    help="Use Xbox/gamepad sticks for base velocity commands (GUI only).",
+)
+parser.add_argument("--gamepad-deadzone", type=float, default=0.08, help="Ignore stick inputs below this magnitude.")
 parser.add_argument(
     "--velocity-demo",
     "--velocity_demo",
@@ -72,8 +84,8 @@ parser.add_argument(
     default="auto",
     choices=["auto", "mouse", "none", "follow", "isometric", "topdown"],
     help=(
-        "Viewport camera mode. 'auto' preserves the old behavior (follow when --keyboard is used), "
-        "'mouse'/'none' leave the IsaacLab viewport camera under mouse control, and the remaining modes "
+        "Viewport camera mode. 'auto' keeps the existing starting angle and tracking with mouse steering. "
+        "'mouse'/'none' use the task's starting view with a free mouse camera, and the remaining modes "
         "programmatically follow env 0."
     ),
 )
@@ -306,6 +318,13 @@ cli_args.add_rsl_rl_args(parser)
 AppLauncher.add_app_launcher_args(parser)
 # parse the arguments
 args_cli, hydra_args = parser.parse_known_args()
+if args_cli.gamepad:
+    if args_cli.headless or os.environ.get("HEADLESS") == "1":
+        parser.error("--gamepad requires the Isaac Sim GUI; remove --headless.")
+    if args_cli.velocity_demo or args_cli.go2_d1_live_control:
+        parser.error("--gamepad cannot be combined with --velocity-demo or --go2-d1-live-control.")
+    if not 0.0 <= args_cli.gamepad_deadzone < 1.0:
+        parser.error("--gamepad-deadzone must be in [0, 1).")
 # always enable cameras to record video
 if args_cli.video:
     args_cli.enable_cameras = True
@@ -314,6 +333,7 @@ if args_cli.video:
 sys.argv = [sys.argv[0]] + hydra_args
 
 # launch omniverse app
+prepare_gamepad_mappings(headless=args_cli.headless)
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
@@ -327,7 +347,6 @@ installed_version = metadata.version("rsl-rl-lib")
 
 """Rest everything follows."""
 
-import os
 import time
 
 import gymnasium as gym
@@ -342,7 +361,7 @@ try:
 except ModuleNotFoundError:
     cv2 = None
 
-from isaaclab.devices import Se2Keyboard, Se2KeyboardCfg
+from isaaclab.devices import Se2Gamepad, Se2GamepadCfg, Se2Keyboard, Se2KeyboardCfg
 from isaaclab.envs import (
     DirectMARLEnv,
     DirectMARLEnvCfg,
@@ -394,9 +413,9 @@ from Gurukul.tasks.manager_based.locomotion.velocity.real_teacher_viz import (
 )
 from Gurukul.utils.export_deploy_cfg import maybe_export_deploy_cfg
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# isort: split
 from legacy_checkpoint import load_checkpoint_for_play
-from rl_utils import camera_follow
+from rl_utils import camera_follow, enable_free_camera, enable_mouse_camera
 
 # PLACEHOLDER: Extension template (do not remove this comment)
 
@@ -789,10 +808,22 @@ def _configure_legacy_b2_z1_arm_moving_play(env_cfg, *, force: bool = False) -> 
     print("[B2-Z1] Restored legacy IK ArmMoving play config for old checkpoints.")
 
 
-def _build_keyboard_velocity_observation(controller: Se2Keyboard, command_name: str = "base_velocity"):
+def _scale_gamepad_velocity(command: torch.Tensor, ranges) -> torch.Tensor:
+    """Map unit stick inputs to robot-frame velocities within the task's asymmetric limits."""
+    # Se2Gamepad reports rightward sticks as positive; robot +y and +yaw point left.
+    command = command.clamp(-1.0, 1.0) * command.new_tensor([1.0, -1.0, -1.0])
+    limits = (ranges.lin_vel_x, ranges.lin_vel_y, ranges.ang_vel_z)
+    positive = command.new_tensor([max(0.0, upper) for _, upper in limits])
+    negative = command.new_tensor([max(0.0, -lower) for lower, _ in limits])
+    return command * torch.where(command >= 0.0, positive, negative)
+
+
+def _build_velocity_observation(
+    controller: Se2Keyboard | Se2Gamepad, command_name: str = "base_velocity", *, gamepad_ranges=None
+):
     command_cache: dict[str, object] = {"step": -1, "command": None}
 
-    def _keyboard_velocity_commands(env):
+    def _live_velocity_commands(env):
         step_counter = getattr(env, "common_step_counter", 0)
         if isinstance(step_counter, torch.Tensor):
             step_counter = int(step_counter.item())
@@ -802,6 +833,8 @@ def _build_keyboard_velocity_observation(controller: Se2Keyboard, command_name: 
         if command_cache["step"] != step_counter:
             command_cache["step"] = step_counter
             velocity = torch.as_tensor(controller.advance(), dtype=torch.float32, device=env.device).reshape(1, -1)
+            if gamepad_ranges is not None:
+                velocity = _scale_gamepad_velocity(velocity[..., :3], gamepad_ranges)
             command_cache["command"] = velocity[..., :3]
 
         command = command_cache["command"]
@@ -820,7 +853,7 @@ def _build_keyboard_velocity_observation(controller: Se2Keyboard, command_name: 
             return command
 
         # Keep the command term's own buffer (and thus its debug-vis arrows and any
-        # reward/metric terms that read it) in sync with the live keyboard input.
+        # reward/metric terms that read it) in sync with the live input.
         vel_command_b = getattr(command_term, "vel_command_b", None)
         if isinstance(vel_command_b, torch.Tensor):
             vel_command_b[:, :3] = command[..., :3].to(vel_command_b.dtype)
@@ -830,7 +863,50 @@ def _build_keyboard_velocity_observation(controller: Se2Keyboard, command_name: 
             return command
         return torch.cat((command, posture), dim=-1)
 
-    return _keyboard_velocity_commands
+    return _live_velocity_commands
+
+
+def _configure_gamepad_velocity_control(env_cfg) -> None:
+    """Route the first Kit gamepad to all configured velocity observation groups."""
+    command_cfg = getattr(getattr(env_cfg, "commands", None), "base_velocity", None)
+    if command_cfg is None:
+        raise ValueError("--gamepad requires a task with commands.base_velocity.")
+    terms = [
+        group.velocity_commands
+        for group in vars(env_cfg.observations).values()
+        if getattr(group, "velocity_commands", None) is not None
+    ]
+    if not terms:
+        raise ValueError("--gamepad requires a velocity_commands observation term.")
+
+    import omni.appwindow
+
+    window = omni.appwindow.get_default_app_window()
+    if window is None or window.get_gamepad(0) is None:
+        raise RuntimeError("No gamepad detected by Isaac Sim. Connect the Xbox controller and restart with --gamepad.")
+    controller = Se2Gamepad(
+        Se2GamepadCfg(
+            v_x_sensitivity=1.0,
+            v_y_sensitivity=1.0,
+            omega_z_sensitivity=1.0,
+            dead_zone=args_cli.gamepad_deadzone,
+        )
+    )
+    controller.reset()
+    env_cfg.scene.num_envs = 1
+    _set_attr_if_exists(getattr(env_cfg, "terminations", None), "time_out", None)
+    command_cfg.debug_vis = True
+    command_cfg.heading_command = False
+    command_cfg.rel_heading_envs = 0.0
+    command_cfg.rel_standing_envs = 0.0
+    command_cfg.resampling_time_range = (1.0e6, 1.0e6)
+    velocity_observation = _build_velocity_observation(controller, gamepad_ranges=command_cfg.ranges)
+    for term in terms:
+        # Retain each group's scales, clipping, and history layout used during training.
+        term.func = velocity_observation
+        term.params = {}
+    print(controller)
+    print("[INFO] Gamepad: left stick moves, right stick turns; release sticks to command zero velocity.")
 
 
 class Go2D1LiveControl:
@@ -2057,30 +2133,32 @@ def _bind_motion_switch_keyboard(controller: Se2Keyboard, command, state: dict[s
 
 
 def _resolve_camera_mode() -> tuple[str, bool]:
-    """Return the active scripted camera mode and whether the user explicitly requested a camera mode."""
+    """Return the scripted camera mode and whether a mode was explicitly requested."""
     requested_mode = str(args_cli.camera_follow_mode).lower()
     if requested_mode == "auto":
         task_name = str(args_cli.task or "")
         if "APEX-Flat-Privileged-Tracker" in task_name:
             return "none", False
-        return ("follow" if args_cli.keyboard else "none"), False
+        return ("follow" if args_cli.keyboard or args_cli.gamepad else "none"), False
     if requested_mode == "mouse":
         return "none", True
     return requested_mode, True
 
 
 def _configure_viewer_for_camera_mode(env_cfg, camera_mode: str, camera_mode_requested: bool) -> None:
-    """Disable IsaacLab asset-root recentering when the script or user owns the viewport camera."""
-    if camera_mode != "none" or camera_mode_requested:
+    """Prepare scripted world-space framing, preserving asset-relative framing for free-camera setup."""
+    if camera_mode != "none":
         env_cfg.viewer.origin_type = "world"
         env_cfg.viewer.asset_name = None
         env_cfg.viewer.body_name = None
 
     if camera_mode == "none" and camera_mode_requested:
-        print("[INFO] Camera follow disabled; use the IsaacLab viewport mouse controls to move the camera.")
-    elif camera_mode != "none":
+        print("[INFO] Free camera enabled from the starting view; use the viewport mouse controls to move it.")
+    elif camera_mode == "none":
+        print("[INFO] Task camera tracking retained with viewport mouse steering enabled.")
+    else:
         print(
-            f"[INFO] Camera follow enabled: mode={camera_mode}, "
+            f"[INFO] Camera follow with mouse steering enabled: mode={camera_mode}, "
             f"smooth_window={max(1, args_cli.camera_smooth_window)}, "
             f"distance_scale={args_cli.camera_follow_distance_scale:g}"
         )
@@ -2277,7 +2355,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         if hasattr(commands_cfg, "base_velocity"):
             # Show the commanded-velocity arrow while teleoperating so the live keyboard
             # command is visible (the underlying vel_command_b buffer is kept in sync with
-            # the keyboard input in _keyboard_velocity_commands, so the arrow reflects it).
+            # the keyboard input in _live_velocity_commands, so the arrow reflects it).
             commands_cfg.base_velocity.debug_vis = True
             config = Se2KeyboardCfg(
                 v_x_sensitivity=commands_cfg.base_velocity.ranges.lin_vel_x[1],
@@ -2292,8 +2370,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             for _group_cfg in vars(env_cfg.observations).values():
                 if hasattr(_group_cfg, "velocity_commands"):
                     _group_cfg.velocity_commands = ObsTerm(
-                        func=_build_keyboard_velocity_observation(keyboard_controller),
+                        func=_build_velocity_observation(keyboard_controller),
                     )
+    if args_cli.gamepad:
+        _configure_gamepad_velocity_control(env_cfg)
     go2_d1_live_control = (
         _configure_go2_d1_live_control(env_cfg, keyboard_controller) if args_cli.go2_d1_live_control else None
     )
@@ -2568,6 +2648,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
     # reset environment so spawn pose / reset events match training before the first policy step
     obs, _ = env.reset()
+    if camera_mode_requested and camera_follow_mode == "none":
+        enable_free_camera(env)
+    else:
+        enable_mouse_camera(env)
     if loco_manip_play_enabled and args_cli.loco_manip_stage == "grid":
         _apply_loco_manip_play_grid_commands(env, loco_manip_play_state)
         obs = env.get_observations()

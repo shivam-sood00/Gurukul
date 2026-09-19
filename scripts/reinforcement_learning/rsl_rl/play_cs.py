@@ -8,9 +8,13 @@
 """Launch Isaac Sim Simulator first."""
 
 import argparse
+import os
 import sys
 
 from isaaclab.app import AppLauncher
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from gamepad_compat import prepare_gamepad_mappings
 
 # local imports
 import cli_args  # isort: skip
@@ -50,6 +54,7 @@ if args_cli.video:
 sys.argv = [sys.argv[0]] + hydra_args
 
 # launch omniverse app
+prepare_gamepad_mappings(headless=args_cli.headless)
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
@@ -63,7 +68,6 @@ installed_version = metadata.version("rsl-rl-lib")
 
 """Rest everything follows."""
 
-import os
 import time
 
 import gymnasium as gym
@@ -97,8 +101,7 @@ from rsl_rl_config_compat import migrate_custom_policy_cfg
 
 import Gurukul.tasks  # noqa: F401  # isort: skip
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from rl_utils import camera_follow
+from rl_utils import camera_follow, enable_mouse_camera
 
 # PLACEHOLDER: Extension template (do not remove this comment)
 
@@ -273,6 +276,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
     # reset environment
     obs = env.get_observations()
+    enable_mouse_camera(env)
     timestep = 0
     # simulate environment
     while simulation_app.is_running():

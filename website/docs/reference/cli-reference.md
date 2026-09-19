@@ -35,6 +35,36 @@ description: Shared RSL-RL scripts and frequently used Gurukul command-line flag
 - `--log_project_name` sets both `wandb_project` and `neptune_project`.
 - `--wandb_project_name` overrides only the W&B project.
 
+## Playback camera
+
+The RSL-RL, CusRL, and skrl playback scripts keep the existing starting camera angle and tracking behavior, with
+mouse steering enabled. Orbit, pan, and zoom using the Isaac Sim viewport controls. After an adjustment, a tracking
+camera continues moving with its target while preserving your chosen angle, pan offset, and zoom. Keyboard robot
+control does not lock the camera.
+
+In RSL-RL `play.py` and `play_with_depth.py`, the default `--camera_follow_mode auto` preserves the previous starting
+angle and tracking behavior. Use `--camera_follow_mode mouse` (or `none`) for a free camera starting from the task's
+configured view. The `follow`, `isometric`, and `topdown` modes select a tracking view that also supports mouse steering.
+
+## Xbox controller recognition
+
+On Linux, the RSL-RL, CusRL, and skrl training/playback scripts and RSL-RL evaluation automatically register the
+USB Xbox Series S|X controller mapping before Isaac Sim starts. This addresses the `Joystick with unknown remapping`
+warning for device ID `030000005e040000120b000009050000`. Restart the script with the controller connected; no extra
+flag or driver change is needed. The mapping comes from [SDL_GameControllerDB](https://github.com/mdqinc/SDL_GameControllerDB).
+It enables recognition by Isaac Sim; robot commands still require the task's controller option, such as
+`--go2-d1-live-control`. The startup fix is skipped in headless runs and applies only to this Linux USB device ID.
+
+The mapping is loaded into both the kernel and extension-cache GLFW copies before startup, since Isaac Sim 5.1
+can select the windowing extension's copy. Xbox Series USB recognition was checked in Isaac Sim 5.1 with the
+controller connected.
+
+RSL-RL `play.py` accepts `--gamepad` for tasks with `commands.base_velocity` and `velocity_commands` observations.
+Use it in place of `--keyboard` to command motion with the left stick and turning with the right stick. It requires
+the GUI and the first controller recognized by Isaac Sim; connect the controller before launching. The default
+stick deadzone is `0.08`, adjustable with `--gamepad-deadzone`. See [PM01 Xbox playback](../tasks/velocity-locomotion/pm01.md#xbox-playback)
+for a complete command.
+
 ## Mounted-arm playback flags
 
 | Flag | Notes |

@@ -16,6 +16,16 @@ gym.register(
 )
 
 gym.register(
+    id="Gurukul-Isaac-Velocity-Flat-EngineAI-PM01-AMP-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.amp_env_cfg:EngineAiPm01AmpFlatEnvCfg",
+        "rsl_rl_cfg_entry_point": (f"{agents.__name__}.rsl_rl_amp_ppo_cfg:EngineAiPm01AmpFlatPPORunnerCfg"),
+    },
+)
+
+gym.register(
     id="Gurukul-Isaac-Velocity-Rough-EngineAI-PM01-v0",
     entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
