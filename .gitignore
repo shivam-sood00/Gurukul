@@ -54,11 +54,10 @@ artifacts/
 # Large data artifacts
 #
 # Motion datasets are ignored by default; the collections that ship with the
-# repository are re-included explicitly.
+# repository are re-included explicitly. APEX exceptions live in motion/.gitignore.
 # ---------------------------------------------------------------------------
 *.npz
 !/source/Gurukul/Gurukul/tasks/manager_based/locomotion/velocity/config/humanoid/engineai_pm01/motion/locomotion.npz
-!/source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/go2_d1/*.npz
 !/unitree-sim2real/RL_policy_runner/sim2real/apex_tracker_motions/*.npz
 
 # ---------------------------------------------------------------------------
@@ -74,10 +73,6 @@ artifacts/
 /source/Gurukul/data/Robots/unitree/go2_with_d1/usd/*.usd
 /source/Gurukul/data/Robots/unitree/go2_with_d1/usd/go2_d1_center_contact_pad_flat_corrected.usda
 /unitree-sim2real/unitree_mujoco/unitree_robots/go2_with_d1/assets/
-/source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/imitation_data/*
-!/source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/imitation_data/go2_d1_motions_csv/
-/source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/*
-!/source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/go2_d1/
 /source/Gurukul/Gurukul/tasks/manager_based/beyondmimic/config/g1/motion/*.csv
 /source/Gurukul/Gurukul/tasks/direct/g1_amp/motions/*.csv
 /source/robot_lab/robot_lab/tasks/manager_based/go2_apex/config/go2/motion/imitation_data/learn_diverse_quad_loco/

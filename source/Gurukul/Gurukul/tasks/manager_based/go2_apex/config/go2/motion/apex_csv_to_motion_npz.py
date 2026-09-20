@@ -151,75 +151,81 @@ def estimate_go2_feet_pos_b_from_joints(joint_pos: np.ndarray) -> np.ndarray:
     return feet_pos_b
 
 
+def _is_numeric(token: str) -> bool:
+    try:
+        float(token)
+    except ValueError:
+        return False
+    return True
+
+
 def load_csv_matrix(path: Path) -> np.ndarray:
-    if not path.is_file():
-        raise FileNotFoundError(f"CSV not found: {path}")
-
-    rows: list[list[float]] = []
-    skipped_bad_width = 0
-    skipped_bad_parse = 0
-    expected_cols: int | None = None
-
-    with path.open("r", encoding="utf-8") as file:
-        first_line = file.readline()
-        if first_line == "":
-            raise ValueError(f"CSV file is empty: {path}")
-        first_tokens = [token.strip() for token in first_line.strip().split(",")]
-
-        has_header = False
-        if first_tokens and first_tokens[0] != "":
-            try:
-                float(first_tokens[0])
-            except ValueError:
-                has_header = True
-
-        if has_header:
-            expected_cols = len(first_tokens)
-        else:
-            expected_cols = len(first_tokens)
-            try:
-                rows.append([float(token) for token in first_tokens])
-            except ValueError:
-                skipped_bad_parse += 1
-
-        for line in file:
-            stripped = line.strip()
-            if not stripped:
+    """Read every numeric frame; never silently drop rows and change motion timing."""
+    rows = []
+    width = None
+    for line_number, line in enumerate(path.read_text().splitlines(), 1):
+        tokens = [token.strip() for token in line.split(",")]
+        if not line.strip():
+            continue
+        try:
+            row = [float(token) for token in tokens]
+        except ValueError as exc:
+            if not rows and width is None and all(token and not _is_numeric(token) for token in tokens):
+                width = -1  # Allow one header, independently of its claimed width.
                 continue
-            tokens = [token.strip() for token in stripped.split(",")]
-            if len(tokens) != expected_cols:
-                skipped_bad_width += 1
-                continue
-            try:
-                rows.append([float(token) for token in tokens])
-            except ValueError:
-                skipped_bad_parse += 1
-
-    if len(rows) == 0:
-        raise ValueError(f"No valid numeric rows found in CSV: {path}")
-
-    if skipped_bad_width or skipped_bad_parse:
-        print(
-            f"[WARN] Skipped malformed rows in {path.name}: "
-            f"bad_width={skipped_bad_width}, bad_parse={skipped_bad_parse}"
-        )
-
+            raise ValueError(f"{path}:{line_number}: nonnumeric motion row") from exc
+        if width is None or width == -1:
+            width = len(row)
+        if len(row) != width:
+            raise ValueError(f"{path}:{line_number}: expected {width} columns, got {len(row)}")
+        rows.append(row)
+    if len(rows) < 2:
+        raise ValueError(f"{path}: at least two numeric motion frames are required")
     return np.asarray(rows, dtype=np.float32)
 
 
 def load_csv_header(path: Path) -> list[str] | None:
-    with path.open("r", encoding="utf-8") as file:
-        first_line = file.readline()
-    if first_line == "":
+    first = next((line for line in path.read_text().splitlines() if line.strip()), "")
+    if not first:
         raise ValueError(f"CSV file is empty: {path}")
-    tokens = [token.strip() for token in first_line.strip().split(",")]
-    if not tokens or tokens[0] == "":
-        return None
+    tokens = [token.strip() for token in first.split(",")]
     try:
-        float(tokens[0])
+        [float(token) for token in tokens]
     except ValueError:
         return tokens
     return None
+
+
+def normalize_quaternion(quaternion):
+    norm = np.linalg.norm(quaternion, axis=-1, keepdims=True)
+    if not np.isfinite(quaternion).all() or np.any(norm < 1e-8):
+        raise ValueError("Motion contains a nonfinite or zero quaternion")
+    return quaternion / norm
+
+
+def feet_to_world(feet, base_pos, base_quat, frame):
+    if frame == "world":
+        return feet.copy()
+    rotation = base_quat
+    if frame == "yaw":
+        w, x, y, z = np.moveaxis(base_quat, -1, 0)
+        yaw = np.arctan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z))
+        rotation = np.zeros_like(base_quat)
+        rotation[:, 0], rotation[:, 3] = np.cos(yaw / 2), np.sin(yaw / 2)
+    return quat_rotate(rotation, feet) + base_pos[:, None, :]
+
+
+def validate_go2_feet(base_pos, feet_pos_w, max_distance, source, frame_start):
+    # A conservative root-to-foot bound: hip origin + hip offset + both leg
+    # segments + retargeting margin. Override explicitly for another morphology.
+    distance = np.linalg.norm(feet_pos_w - base_pos[:, None, :], axis=-1)
+    if not np.isfinite(distance).all() or np.any(distance > max_distance):
+        frame, foot = np.unravel_index(np.argmax(distance), distance.shape)
+        raise ValueError(
+            f"{source}: frame {frame_start + frame}, {CANONICAL_LEGS[foot]} foot is "
+            f"{distance[frame, foot]:.3f} m from the root (limit {max_distance:.3f} m). "
+            "Check coordinate frames or select a continuous --frame-range START STOP; reset artifacts must be excluded."
+        )
 
 
 def parse_csv_leg_order(order_str: str) -> list[str]:
@@ -237,14 +243,42 @@ def convert(
     fps: float,
     csv_leg_order: list[str],
     ground_align_foot_height: bool = False,
+    *,
+    velocity_frame: str = "auto",
+    feet_frame: str = "auto",
+    frame_range: tuple[int, int] | None = None,
+    max_foot_distance: float = 0.9,
 ) -> None:
+    if not np.isfinite(fps) or fps <= 0 or not np.isfinite(max_foot_distance) or max_foot_distance <= 0:
+        raise ValueError("FPS and maximum foot distance must be positive and finite")
+    if velocity_frame not in ("auto", "body", "world") or feet_frame not in ("auto", "body", "yaw", "world"):
+        raise ValueError("Invalid velocity or foot coordinate frame")
+    parse_csv_leg_order(",".join(csv_leg_order))
     data = load_csv_matrix(input_csv)
+    frame_start, frame_stop = frame_range if frame_range is not None else (0, len(data))
+    if not 0 <= frame_start < frame_stop <= len(data) or frame_stop - frame_start < 2:
+        raise ValueError(f"Invalid half-open frame range {(frame_start, frame_stop)} for {len(data)} frames")
+    data = data[frame_start:frame_stop]
+    if not np.isfinite(data).all():
+        raise ValueError("Selected motion frames contain nonfinite values")
     if data.shape[1] < 40:
         raise ValueError(f"Expected at least 40 columns in APEX CSV, got {data.shape[1]} from: {input_csv}")
 
     dt = 1.0 / fps
     header = load_csv_header(input_csv)
-    if header is not None and all(name in header for name in GO2_D1_ARM_JOINT_NAMES):
+    is_d1 = header is not None and all(name in header for name in GO2_D1_ARM_JOINT_NAMES)
+    if velocity_frame == "auto":
+        velocity_frame = "world" if is_d1 or "_STMR_" in input_csv.name else "body"
+    if feet_frame == "auto":
+        feet_frame = "body" if is_d1 else "yaw"
+    metadata = {
+        "motion_conversion_version": np.int32(2),
+        "source_frame_range": np.asarray([frame_start, frame_stop]),
+        "source_velocity_frame": np.asarray(velocity_frame),
+        "source_feet_frame": np.asarray(feet_frame),
+    }
+    output_npz.parent.mkdir(parents=True, exist_ok=True)
+    if is_d1:
         convert_header_go2_d1(
             data,
             header,
@@ -254,6 +288,10 @@ def convert(
             dt,
             csv_leg_order,
             ground_align_foot_height=ground_align_foot_height,
+            velocity_frame=velocity_frame,
+            feet_frame=feet_frame,
+            max_foot_distance=max_foot_distance,
+            metadata=metadata,
         )
         return
 
@@ -280,21 +318,35 @@ def convert(
     base_quat_xyzw = data[:, 36:40]
     # Isaac Lab quaternions are wxyz.
     base_quat = np.concatenate([base_quat_xyzw[:, 3:4], base_quat_xyzw[:, 0:3]], axis=1)
-    base_quat = base_quat / np.linalg.norm(base_quat, axis=1, keepdims=True).clip(min=1.0e-8)
+    base_quat = normalize_quaternion(base_quat)
+    if velocity_frame == "body":
+        base_lin_vel = quat_rotate(base_quat, base_lin_vel[:, None, :])[:, 0]
+        base_ang_vel = quat_rotate(base_quat, base_ang_vel[:, None, :])[:, 0]
     command_lin_vel_xy = data[:, 18:20]
     command_ang_vel_z = data[:, 20:21]
 
+    feet_already_canonical = False
     feet_pos_w = _header_feet_world_columns(data, header) if header is not None else None
+    if feet_pos_w is not None:
+        feet_frame = "world"
     if feet_pos_w is None and data.shape[1] >= 52:
         # Legacy width-based APEX files with explicit foot world-frame coordinates.
         feet_pos_w = data[:, 40:52].reshape(-1, 4, 3)
+        feet_frame = "world"
     elif feet_pos_w is None:
-        # APEX files with foot coordinates in the base frame: rotate + translate into world frame.
+        # Convert source foot offsets using their explicit coordinate convention.
         feet_pos_b = data[:, 22:34].reshape(-1, 4, 3)
         if np.allclose(feet_pos_b, 0.0, atol=1.0e-7):
             print(f"[WARN] {input_csv.name}: foot position columns are all zero; estimating Go2 feet with FK.")
             feet_pos_b = estimate_go2_feet_pos_b_from_joints(joint_pos)
-        feet_pos_w = quat_rotate(base_quat, feet_pos_b) + base_pos[:, None, :]
+            feet_frame = "body"  # Kinematic fallback is explicitly body-relative.
+            feet_already_canonical = True
+        feet_pos_w = feet_to_world(feet_pos_b, base_pos, base_quat, feet_frame)
+
+    if not feet_already_canonical:
+        feet_pos_w = feet_pos_w[:, [leg_to_csv_idx[leg] for leg in CANONICAL_LEGS]]
+    metadata["source_feet_frame"] = np.asarray(feet_frame)
+    validate_go2_feet(base_pos, feet_pos_w, max_foot_distance, input_csv, int(metadata["source_frame_range"][0]))
 
     if ground_align_foot_height:
         foot_height_offset = feet_pos_w[:, :, 2].min(axis=1)
@@ -317,6 +369,7 @@ def convert(
 
     np.savez(
         output_npz,
+        **metadata,
         fps=np.float32(fps),
         joint_pos=joint_pos.astype(np.float32),
         joint_vel=joint_vel.astype(np.float32),
@@ -370,8 +423,14 @@ def convert_header_go2_d1(
     dt: float,
     csv_leg_order: list[str],
     ground_align_foot_height: bool = False,
+    *,
+    velocity_frame="world",
+    feet_frame="body",
+    max_foot_distance=0.9,
+    metadata=None,
 ) -> None:
     """Convert header-based Go2+D1 CSVs with leg and arm joint columns."""
+    metadata = metadata or {"source_frame_range": np.asarray([0, len(data)])}
     leg_to_csv_idx = {leg: i for i, leg in enumerate(csv_leg_order)}
     csv_leg_joint_groups = [
         ("base1", "shoulder1", "elbow1"),
@@ -396,11 +455,17 @@ def convert_header_go2_d1(
     )
     base_quat_xyzw = _header_columns(data, header, ["quat_x", "quat_y", "quat_z", "quat_w"])
     base_quat = np.concatenate([base_quat_xyzw[:, 3:4], base_quat_xyzw[:, 0:3]], axis=1)
-    base_quat = base_quat / np.linalg.norm(base_quat, axis=1, keepdims=True).clip(min=1.0e-8)
+    base_quat = normalize_quaternion(base_quat)
+    if velocity_frame == "body":
+        base_lin_vel = quat_rotate(base_quat, base_lin_vel[:, None, :])[:, 0]
+        base_ang_vel = quat_rotate(base_quat, base_ang_vel[:, None, :])[:, 0]
     command_lin_vel_xy = _header_columns(data, header, ["com_vx", "com_vy"])
     command_ang_vel_z = _header_columns(data, header, ["com_wz"])
 
+    feet_already_canonical = False
     feet_pos_w = _header_feet_world_columns(data, header)
+    if feet_pos_w is not None:
+        feet_frame = "world"
     if feet_pos_w is None:
         feet_pos_b = np.stack(
             [
@@ -412,13 +477,20 @@ def convert_header_go2_d1(
         if np.allclose(feet_pos_b, 0.0, atol=1.0e-7):
             print(f"[WARN] {input_csv.name}: foot position columns are all zero; estimating Go2 feet with FK.")
             feet_pos_b = estimate_go2_feet_pos_b_from_joints(joint_pos[:, : len(GO2_JOINT_NAMES)])
-        feet_pos_w = quat_rotate(base_quat, feet_pos_b) + base_pos[:, None, :]
+            feet_frame = "body"  # Kinematic fallback is explicitly body-relative.
+            feet_already_canonical = True
+        feet_pos_w = feet_to_world(feet_pos_b, base_pos, base_quat, feet_frame)
     arm_ee_pos_b = _header_columns(data, header, ["arm_eex", "arm_eey", "arm_eez"])
     arm_ee_pos_w = quat_rotate(base_quat, arm_ee_pos_b[:, None, :])[:, 0, :] + base_pos
     arm_ee_quat_w = d1_link6_quat_w(
         base_quat,
         joint_pos[:, len(GO2_JOINT_NAMES) :],
     )
+
+    if not feet_already_canonical:
+        feet_pos_w = feet_pos_w[:, [leg_to_csv_idx[leg] for leg in CANONICAL_LEGS]]
+    metadata["source_feet_frame"] = np.asarray(feet_frame)
+    validate_go2_feet(base_pos, feet_pos_w, max_foot_distance, input_csv, int(metadata["source_frame_range"][0]))
 
     if ground_align_foot_height:
         foot_height_offset = feet_pos_w[:, :, 2].min(axis=1)
@@ -443,6 +515,7 @@ def convert_header_go2_d1(
 
     np.savez(
         output_npz,
+        **metadata,
         fps=np.float32(fps),
         joint_pos=joint_pos.astype(np.float32),
         joint_vel=joint_vel.astype(np.float32),
@@ -476,6 +549,26 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Subtract the per-frame minimum foot world height from base and foot positions.",
     )
+    parser.add_argument(
+        "--velocity-frame",
+        choices=("auto", "body", "world"),
+        default="auto",
+        help="auto: body for Go2 CSVs; world for STMR and named Go2+D1 CSVs.",
+    )
+    parser.add_argument(
+        "--feet-frame",
+        choices=("auto", "yaw", "body", "world"),
+        default="auto",
+        help="Frame of relative foot columns; explicit world-foot columns take precedence.",
+    )
+    parser.add_argument(
+        "--frame-range",
+        type=int,
+        nargs=2,
+        metavar=("START", "STOP"),
+        help="Half-open range of numeric frames, selected before differentiation.",
+    )
+    parser.add_argument("--max-foot-distance", type=float, default=0.9, help="Maximum root-to-foot distance in metres.")
     return parser.parse_args()
 
 
@@ -487,6 +580,10 @@ def main() -> None:
         args.fps,
         parse_csv_leg_order(args.csv_leg_order),
         ground_align_foot_height=args.ground_align_foot_height,
+        velocity_frame=args.velocity_frame,
+        feet_frame=args.feet_frame,
+        frame_range=args.frame_range,
+        max_foot_distance=args.max_foot_distance,
     )
     print(f"Wrote motion file: {args.output}")
 

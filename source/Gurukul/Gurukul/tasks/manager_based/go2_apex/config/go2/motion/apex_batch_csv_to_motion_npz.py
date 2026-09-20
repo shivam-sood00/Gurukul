@@ -68,6 +68,10 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Subtract the per-frame minimum foot world height from base and foot positions.",
     )
+    parser.add_argument("--velocity-frame", choices=("auto", "body", "world"), default="auto")
+    parser.add_argument("--feet-frame", choices=("auto", "yaw", "body", "world"), default="auto")
+    parser.add_argument("--frame-range", type=int, nargs=2, metavar=("START", "STOP"))
+    parser.add_argument("--max-foot-distance", type=float, default=0.9)
     return parser.parse_args()
 
 
@@ -121,6 +125,8 @@ def main() -> int:
                 args.fps,
                 leg_order,
                 ground_align_foot_height=args.ground_align_foot_height,
+                velocity_frame=args.velocity_frame, feet_frame=args.feet_frame,
+                frame_range=args.frame_range, max_foot_distance=args.max_foot_distance,
             )
             converted += 1
             print(f"[OK]   {relative} -> {output_npz.relative_to(args.output_root)}")

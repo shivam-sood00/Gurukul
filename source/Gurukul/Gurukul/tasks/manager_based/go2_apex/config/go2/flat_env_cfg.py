@@ -36,5 +36,6 @@ class UnitreeGo2ApexFlatEnvCfg(Go2ApexEnvCfg):
             f"{os.path.dirname(__file__)}/motion/npz/animal_mocap/go2_retarget_canter_2ms.npz"
         )
         self.commands.motion.anchor_body_name = "base"
+        self.commands.motion.max_reference_foot_distance = 0.9
         self.commands.motion.body_names = list(GO2_MOTION_BODY_NAMES)
         self.commands.motion.debug_vis = False

@@ -1,0 +1,15 @@
+# Keep external collections local; include the bundled source data.
+/imitation_data/*
+!/imitation_data/APEX_GO2_IMPORT.json
+!/imitation_data/animal_mocap/
+!/imitation_data/gait_switch/
+!/imitation_data/go2_d1_motions_csv/
+!/imitation_data/walk_these_ways/
+
+# Include converted NPZs only within the bundled collections.
+/npz/*
+!/npz/animal_mocap/
+!/npz/gait_switch/
+!/npz/go2_d1/
+!/npz/walk_these_ways/
+!/npz/*/*.npz

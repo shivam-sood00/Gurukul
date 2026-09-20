@@ -4,6 +4,7 @@ import glob
 import os
 
 import torch
+
 from isaaclab.envs.mdp import JointPositionAction
 from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationTermCfg as ObsTerm
@@ -294,6 +295,7 @@ class UnitreeB2Z1ArmApexFlatTrackerEnvCfg(UnitreeGo2ApexFlatTrackerEnvCfg):
 
     def __post_init__(self):
         super().__post_init__()
+        self.commands.motion.max_reference_foot_distance = 1.5
 
         # Use the original 50 Hz tracker control rate while debugging B2+Z1 tracking regressions.
         self.decimation = B2_Z1_CONTROL_DECIMATION
@@ -305,6 +307,7 @@ class UnitreeB2Z1ArmApexFlatTrackerEnvCfg(UnitreeGo2ApexFlatTrackerEnvCfg):
 
         motion_root = f"{os.path.dirname(__file__)}/motion/npz"
         b2_z1_motion_glob = f"{motion_root}/b2_z1_motions/**/*.npz"
+        self.commands.motion.motion_file = b2_z1_motion_glob
         self.commands.motion.motion_files = tuple(
             motion_file
             for motion_file in sorted(glob.glob(b2_z1_motion_glob, recursive=True))

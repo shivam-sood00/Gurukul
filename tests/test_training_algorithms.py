@@ -268,22 +268,14 @@ def test_multi_critic_rollout_and_update_smoke():
         )
 
     obs = make_obs()
-    policy = multi_critic.MultiCriticActorCritic(
-        obs,
-        obs_groups,
-        num_actions,
-        actor_hidden_dims=[16],
-        critic_hidden_dims=[16],
-        critic_obs_groups=[["critic_a"], ["critic_b"]],
-    )
+    from rsl_rl.models import MLPModel
+
+    policy = MLPModel(obs, obs_groups, "policy", num_actions, hidden_dims=[16],
+                      distribution_cfg={"class_name": "GaussianDistribution"})
+    critic = multi_critic.MultiCriticModel(obs, [["critic_a"], ["critic_b"]], hidden_dims=[16])
     storage = multi_critic.MultiCriticRolloutStorage(num_envs, num_steps, obs, [num_actions], 2, "cpu")
     algorithm = multi_critic.MultiCriticPPO(
-        policy,
-        storage,
-        num_critics=2,
-        device="cpu",
-        num_learning_epochs=1,
-        num_mini_batches=2,
+        policy, critic, storage, device="cpu", num_learning_epochs=1, num_mini_batches=2,
     )
     for _ in range(num_steps):
         algorithm.act(obs)
@@ -336,7 +328,8 @@ def test_multi_critic_rollout_and_update_smoke():
     }
     runner = multi_critic.MultiCriticRunner(FakeEnv(), runner_cfg, log_dir=None, device="cpu")
     assert isinstance(runner.alg, multi_critic.MultiCriticPPO)
-    assert runner.alg.get_policy().output_std.shape == (3,)
+    runner.alg.act(runner.env.get_observations())
+    assert runner.alg.get_policy().output_std.shape[-1] == 3
 
     reward_manager = types.SimpleNamespace(
         active_terms=["style", "task"],

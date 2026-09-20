@@ -18,9 +18,12 @@ gym.register(
 
 gym.register(
     id="Gurukul-Isaac-BeyondMimic-APEX-Flat-Unitree-G1-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point="Gurukul.tasks.manager_based.go2_apex.env:ApexManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
+        "rsl_rl_multi_critic_cfg_entry_point": (
+            f"{agents.__name__}.rsl_rl_ppo_cfg:UnitreeG1ApexFlatMultiCriticRunnerCfg"
+        ),
         "env_cfg_entry_point": f"{__name__}.apex_tracker_env_cfg:UnitreeG1BeyondMimicApexFlatTrackerEnvCfg",
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:UnitreeG1BeyondMimicFlatPPORunnerCfg",
     },
@@ -28,9 +31,12 @@ gym.register(
 
 gym.register(
     id="Gurukul-Isaac-G1-APEX-Flat-Tracker-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point="Gurukul.tasks.manager_based.go2_apex.env:ApexManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
+        "rsl_rl_multi_critic_cfg_entry_point": (
+            f"{agents.__name__}.rsl_rl_ppo_cfg:UnitreeG1ApexFlatMultiCriticRunnerCfg"
+        ),
         "env_cfg_entry_point": f"{__name__}.apex_tracker_env_cfg:UnitreeG1BeyondMimicApexFlatTrackerEnvCfg",
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:UnitreeG1BeyondMimicFlatPPORunnerCfg",
     },

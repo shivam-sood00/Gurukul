@@ -64,7 +64,115 @@ python scripts/reinforcement_learning/rsl_rl/train.py \
   --headless
 ```
 
-The custom runner uses the RSL-RL 5.3 actor/critic/storage interface and optimizes the shared multi-head policy once.
+The grouped runner adapts [APEX](https://github.com/marmotlab/APEX)'s independent critics to the RSL-RL 5.3 actor/critic/storage interface. Each reward
+group has its own value network and normalized advantages; their weighted mixture trains one actor. Time limits
+bootstrap each critic from the final observation captured before reset. The actor uses bounded log standard
+deviation (`0.01–2.0`).
+
+This entry point is available on the base Go2 flat task, the Go2 depth-distill environment, and the four Go2 tracker
+tasks listed above: tracker, privileged tracker, one-step-future tracker, and one-step-future-history tracker.
+It also supports all six Go2+D1 PPO tasks (direct tracker, original-DecAP teacher, pick/stow/carry, robot-only
+tracking, can pickup, and privileged manipulation teacher), all six B2+Z1 tracker/teacher variants, and both G1
+APEX aliases. Supervised distillation and the depth teacher-action-prior runner use their existing separate agents.
+Selecting this entry point runs grouped PPO. The task's observation groups, reward weights, and DecAP schedule
+remain those of its existing configuration.
+
+Arm tasks keep their original policy widths and action clipping. Their first critic includes arm, gripper, and
+object imitation/contact objectives; the second includes command tracking, regularization, and failure penalties.
+G1 groups motion tracking separately from regularization. Every enabled reward must belong to exactly one group.
+
+Using the bundled canter NPZ (fetch Git LFS files with `git lfs pull`), check rollout collection, timeouts, updates, and
+checkpoint writing with a short run:
+
+```bash
+python scripts/reinforcement_learning/rsl_rl/train.py \
+  --task=Gurukul-Isaac-Go2-APEX-Flat-v0 \
+  --agent=rsl_rl_multi_critic_cfg_entry_point \
+  --motion-file source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz/animal_mocap/go2_retarget_canter_2ms.npz \
+  --num_envs 64 --max_iterations 5 --logger tensorboard --headless \
+  --run_name multi_critic_smoke \
+  env.episode_length_s=0.2 agent.save_interval=1
+```
+
+The run writes `model_1.pt` through `model_5.pt` under
+`logs/rsl_rl/unitree_go2_apex_flat_multi_critic/<run>/`. For a full experiment, remove the two final overrides,
+increase `--num_envs`, and use `--max_iterations 5000`. To check a tracker, change `--task` to
+`Gurukul-Isaac-Go2-APEX-Flat-Tracker-v0` and retain the explicit `--motion-file`.
+
+Append `agent.multi_critic_recurrent=true` to use independent LSTM states for the actor and critics; add
+`agent.multi_critic_rnn_type=gru` for GRU. Feedforward rollouts require `num_envs * num_steps_per_env` to divide
+evenly into `num_mini_batches`; recurrent rollouts require `num_envs` to divide evenly. Invalid batch sizes fail
+at startup. Grouped PPO does not support RND or symmetry augmentation.
+
+Start fresh when switching from the former shared-head multi-critic runner. New checkpoints store completed
+updates, optimizer learning rate, DecAP counters, adaptive motion sampling scores, and random generator states.
+Resume with the same task, ordered reward groups, motion dataset, model configuration, rollout length, and GPU count using
+`--resume --load_run <run-folder-name> --checkpoint model_500.pt`. The saved curriculum continues, but physics and
+in-progress episodes restart; this is not an exact trajectory replay.
+Go2+D1 grasp-contact curriculum offsets are restored along with the step counter, and fixed-wrist B2+Z1 checkpoints
+support its plain joint-position action term without requiring DecAP state.
+
+Playback with the same task and `--agent=rsl_rl_multi_critic_cfg_entry_point` exports the native actor to
+`exported/policy.pt` and `exported/policy.onnx` in the run directory. CPU regression tests cover grouped updates,
+timeout values, resume, and exports. Isaac Sim training and GPU execution require a separate smoke run.
+
+### Arm multi-critic checks
+
+Use an Isaac Lab environment with the corresponding robot assets installed. Go2+D1's hello reference is included;
+B2+Z1 requires compatible 18-joint NPZ motion files under `motion/npz/b2_z1_motions/` or an explicit `--motion-file`.
+Missing B2 data raises a loader error instead of selecting the inherited Go2 reference.
+
+```bash
+MOTION_ROOT=source/Gurukul/Gurukul/tasks/manager_based/go2_apex/config/go2/motion/npz
+
+python scripts/reinforcement_learning/rsl_rl/train.py \
+  --task=Gurukul-Isaac-Go2-D1-Arm-APEX-Flat-Tracker-v0 \
+  --agent=rsl_rl_multi_critic_cfg_entry_point \
+  --motion-file "$MOTION_ROOT/go2_d1/wave_hello.npz" \
+  --num_envs 64 --max_iterations 5 --logger tensorboard --headless \
+  --run_name d1_multi_critic_smoke \
+  env.episode_length_s=0.2 agent.save_interval=1
+
+python scripts/reinforcement_learning/rsl_rl/train.py \
+  --task=Gurukul-Isaac-B2-Z1-Arm-APEX-Flat-Tracker-v0 \
+  --agent=rsl_rl_multi_critic_cfg_entry_point \
+  --motion-file "$MOTION_ROOT/b2_z1_motions/salut.npz" \
+  --num_envs 64 --max_iterations 5 --logger tensorboard --headless \
+  --run_name b2_z1_multi_critic_smoke \
+  env.episode_length_s=0.2 agent.save_interval=1
+```
+
+Each command should complete five updates and write `model_5.pt` in its experiment directory under `logs/rsl_rl/`.
+For full training, remove `env.episode_length_s=0.2 agent.save_interval=1`, use a new run name, and increase to
+`--num_envs 4096 --max_iterations 5000`. The experiment names are `unitree_go2_d1_arm_apex_flat_tracker_multi_critic`
+and `unitree_b2_z1_arm_apex_flat_tracker_multi_critic`.
+
+For manipulation, select `Gurukul-Isaac-Go2-D1-Arm-APEX-Pick-Stow-Carry-Flat-Tracker-v0` with
+`--motion-file "$MOTION_ROOT/go2_d1/pick_stow_carry.npz"`; the other registered arm variants accept the same
+multi-critic agent entry point. Use `--zero_decap` only when that experiment intentionally disables the prior.
+
+Playback uses the same task, agent, and motion with a selected run:
+
+```bash
+python scripts/reinforcement_learning/rsl_rl/play.py \
+  --task=Gurukul-Isaac-Go2-D1-Arm-APEX-Flat-Tracker-v0 \
+  --agent=rsl_rl_multi_critic_cfg_entry_point \
+  --motion-file "$MOTION_ROOT/go2_d1/wave_hello.npz" \
+  --num_envs 1 --load_run '<run-folder-name>' --checkpoint model_5000.pt
+```
+
+For B2+Z1, substitute its task ID and motion path. Repeat any recurrent architecture overrides used for training.
+Standard arm playback disables the environment-side DecAP prior.
+
+The G1 APEX aliases use the same multi-critic entry point and require a compatible G1 BeyondMimic NPZ:
+
+```bash
+python scripts/reinforcement_learning/rsl_rl/train.py \
+  --task=Gurukul-Isaac-G1-APEX-Flat-Tracker-v0 \
+  --agent=rsl_rl_multi_critic_cfg_entry_point --motion-file /path/to/g1_motion.npz \
+  --num_envs 64 --max_iterations 5 --logger tensorboard --headless \
+  env.episode_length_s=0.2 agent.save_interval=1
+```
 
 ## Base PPO
 

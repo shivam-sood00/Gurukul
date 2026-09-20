@@ -15,7 +15,7 @@ from . import (
 
 gym.register(
     id="Gurukul-Isaac-Go2-APEX-Flat-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point="Gurukul.tasks.manager_based.go2_apex.env:ApexManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.flat_env_cfg:UnitreeGo2ApexFlatEnvCfg",
@@ -33,7 +33,7 @@ gym.register(
 
 gym.register(
     id="Gurukul-Isaac-Go2-APEX-Flat-Depth-Distill-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point="Gurukul.tasks.manager_based.go2_apex.env:ApexManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.flat_depth_distill_env_cfg:UnitreeGo2ApexFlatDepthDistillEnvCfg",
@@ -67,9 +67,12 @@ gym.register(
 
 gym.register(
     id="Gurukul-Isaac-Go2-APEX-Flat-Tracker-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point="Gurukul.tasks.manager_based.go2_apex.env:ApexManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
+        "rsl_rl_multi_critic_cfg_entry_point": (
+            f"{agents.__name__}.rsl_rl_multi_critic_cfg:UnitreeGo2ApexFlatTrackerMultiCriticRunnerCfg"
+        ),
         "env_cfg_entry_point": f"{__name__}.flat_tracker_env_cfg:UnitreeGo2ApexFlatTrackerEnvCfg",
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:UnitreeGo2ApexFlatTrackerPPORunnerCfg",
         "rsl_rl_teacher_cfg_entry_point": (
@@ -83,9 +86,12 @@ gym.register(
 
 gym.register(
     id="Gurukul-Isaac-Go2-APEX-Flat-Privileged-Tracker-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point="Gurukul.tasks.manager_based.go2_apex.env:ApexManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
+        "rsl_rl_multi_critic_cfg_entry_point": (
+            f"{agents.__name__}.rsl_rl_multi_critic_cfg:UnitreeGo2ApexFlatPrivilegedMultiCriticRunnerCfg"
+        ),
         "env_cfg_entry_point": f"{__name__}.flat_tracker_env_cfg:UnitreeGo2ApexFlatPrivilegedTrackerEnvCfg",
         "rsl_rl_cfg_entry_point": (
             f"{agents.__name__}.rsl_rl_teacher_cfg:UnitreeGo2ApexFlatPrivilegedTrackerPPORunnerCfg"
@@ -95,9 +101,12 @@ gym.register(
 
 gym.register(
     id="Gurukul-Isaac-Go2-APEX-Flat-Tracker-One-Step-Future-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point="Gurukul.tasks.manager_based.go2_apex.env:ApexManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
+        "rsl_rl_multi_critic_cfg_entry_point": (
+            f"{agents.__name__}.rsl_rl_multi_critic_cfg:UnitreeGo2ApexFlatOneStepFutureMultiCriticRunnerCfg"
+        ),
         "env_cfg_entry_point": f"{__name__}.flat_tracker_env_cfg:UnitreeGo2ApexFlatOneStepFutureTrackerEnvCfg",
         "rsl_rl_cfg_entry_point": (
             f"{agents.__name__}.rsl_rl_ppo_cfg:UnitreeGo2ApexFlatOneStepFutureTrackerPPORunnerCfg"
@@ -110,9 +119,12 @@ gym.register(
 
 gym.register(
     id="Gurukul-Isaac-Go2-APEX-Flat-Tracker-One-Step-Future-History-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point="Gurukul.tasks.manager_based.go2_apex.env:ApexManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
+        "rsl_rl_multi_critic_cfg_entry_point": (
+            f"{agents.__name__}.rsl_rl_multi_critic_cfg:UnitreeGo2ApexFlatHistoryMultiCriticRunnerCfg"
+        ),
         "env_cfg_entry_point": (
             f"{__name__}.flat_tracker_env_cfg:UnitreeGo2ApexFlatOneStepFutureTrackerHistoryEnvCfg"
         ),
@@ -128,9 +140,12 @@ gym.register(
 
 gym.register(
     id="Gurukul-Isaac-Go2-D1-Arm-APEX-Flat-Tracker-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point="Gurukul.tasks.manager_based.go2_apex.env:ApexManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
+        "rsl_rl_multi_critic_cfg_entry_point": (
+            f"{agents.__name__}.rsl_rl_multi_critic_cfg:UnitreeGo2D1ArmApexFlatTrackerMultiCriticRunnerCfg"
+        ),
         "env_cfg_entry_point": (
             f"{__name__}.flat_d1_arm_tracker_env_cfg:UnitreeGo2D1ArmApexFlatTrackerEnvCfg"
         ),
@@ -158,9 +173,12 @@ gym.register(
 
 gym.register(
     id="Gurukul-Isaac-Go2-D1-Arm-APEX-Original-DecAP-Teacher-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point="Gurukul.tasks.manager_based.go2_apex.env:ApexManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
+        "rsl_rl_multi_critic_cfg_entry_point": (
+            f"{agents.__name__}.rsl_rl_multi_critic_cfg:UnitreeGo2D1ArmApexOriginalDecapTeacherMultiCriticRunnerCfg"
+        ),
         "env_cfg_entry_point": (
             f"{__name__}.flat_d1_arm_tracker_env_cfg:"
             "UnitreeGo2D1ArmApexOriginalDecapTeacherEnvCfg"
@@ -174,9 +192,12 @@ gym.register(
 
 gym.register(
     id="Gurukul-Isaac-Go2-D1-Arm-APEX-Pick-Stow-Carry-Flat-Tracker-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point="Gurukul.tasks.manager_based.go2_apex.env:ApexManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
+        "rsl_rl_multi_critic_cfg_entry_point": (
+            f"{agents.__name__}.rsl_rl_multi_critic_cfg:UnitreeGo2D1ArmApexPickStowCarryMultiCriticRunnerCfg"
+        ),
         "env_cfg_entry_point": (
             f"{__name__}.flat_d1_arm_tracker_env_cfg:"
             "UnitreeGo2D1ArmApexPickStowCarryFlatTrackerEnvCfg"
@@ -190,9 +211,12 @@ gym.register(
 
 gym.register(
     id="Gurukul-Isaac-Go2-D1-Arm-APEX-Pick-Stow-Carry-Robot-Only-Flat-Tracker-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point="Gurukul.tasks.manager_based.go2_apex.env:ApexManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
+        "rsl_rl_multi_critic_cfg_entry_point": (
+            f"{agents.__name__}.rsl_rl_multi_critic_cfg:UnitreeGo2D1ArmApexPickStowCarryRobotOnlyMultiCriticRunnerCfg"
+        ),
         "env_cfg_entry_point": (
             f"{__name__}.flat_d1_arm_tracker_env_cfg:"
             "UnitreeGo2D1ArmApexPickStowCarryRobotOnlyFlatTrackerEnvCfg"
@@ -206,9 +230,12 @@ gym.register(
 
 gym.register(
     id="Gurukul-Isaac-Go2-D1-Arm-APEX-Can-Pick-Carry-Drop-Flat-Tracker-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point="Gurukul.tasks.manager_based.go2_apex.env:ApexManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
+        "rsl_rl_multi_critic_cfg_entry_point": (
+            f"{agents.__name__}.rsl_rl_multi_critic_cfg:UnitreeGo2D1ArmApexCanPickCarryDropMultiCriticRunnerCfg"
+        ),
         "env_cfg_entry_point": (
             f"{__name__}.flat_d1_arm_tracker_env_cfg:"
             "UnitreeGo2D1ArmApexCanPickCarryDropFlatTrackerEnvCfg"
@@ -222,9 +249,12 @@ gym.register(
 
 gym.register(
     id="Gurukul-Isaac-Go2-D1-Arm-APEX-Pick-Stow-Carry-Privileged-Teacher-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point="Gurukul.tasks.manager_based.go2_apex.env:ApexManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
+        "rsl_rl_multi_critic_cfg_entry_point": (
+            f"{agents.__name__}.rsl_rl_multi_critic_cfg:UnitreeGo2D1ArmApexPickStowCarryPrivilegedTeacherMultiCriticRunnerCfg"
+        ),
         "env_cfg_entry_point": (
             f"{__name__}.flat_d1_arm_tracker_env_cfg:"
             "UnitreeGo2D1ArmApexPickStowCarryPrivilegedTeacherEnvCfg"
@@ -254,9 +284,12 @@ gym.register(
 
 gym.register(
     id="Gurukul-Isaac-B2-Z1-Arm-APEX-Flat-Tracker-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point="Gurukul.tasks.manager_based.go2_apex.env:ApexManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
+        "rsl_rl_multi_critic_cfg_entry_point": (
+            f"{agents.__name__}.rsl_rl_multi_critic_cfg:UnitreeB2Z1ArmApexFlatTrackerMultiCriticRunnerCfg"
+        ),
         "env_cfg_entry_point": (
             f"{__name__}.flat_b2_z1_arm_tracker_env_cfg:UnitreeB2Z1ArmApexFlatTrackerEnvCfg"
         ),
@@ -274,9 +307,12 @@ gym.register(
 
 gym.register(
     id="Gurukul-Isaac-B2-Z1-Arm-APEX-Flat-Tracker-One-Step-Future-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point="Gurukul.tasks.manager_based.go2_apex.env:ApexManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
+        "rsl_rl_multi_critic_cfg_entry_point": (
+            f"{agents.__name__}.rsl_rl_multi_critic_cfg:UnitreeB2Z1ArmApexFlatOneStepFutureTrackerMultiCriticRunnerCfg"
+        ),
         "env_cfg_entry_point": (
             f"{__name__}.flat_b2_z1_arm_tracker_env_cfg:UnitreeB2Z1ArmApexFlatOneStepFutureTrackerEnvCfg"
         ),
@@ -292,9 +328,12 @@ gym.register(
 
 gym.register(
     id="Gurukul-Isaac-B2-Z1-Arm-APEX-Flat-Tracker-One-Step-Future-History-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point="Gurukul.tasks.manager_based.go2_apex.env:ApexManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
+        "rsl_rl_multi_critic_cfg_entry_point": (
+            f"{agents.__name__}.rsl_rl_multi_critic_cfg:UnitreeB2Z1ArmApexFlatOneStepFutureTrackerHistoryMultiCriticRunnerCfg"
+        ),
         "env_cfg_entry_point": (
             f"{__name__}.flat_b2_z1_arm_tracker_env_cfg:"
             "UnitreeB2Z1ArmApexFlatOneStepFutureTrackerHistoryEnvCfg"
@@ -311,9 +350,12 @@ gym.register(
 
 gym.register(
     id="Gurukul-Isaac-B2-Z1-Arm-APEX-Flat-Privileged-Tracker-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point="Gurukul.tasks.manager_based.go2_apex.env:ApexManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
+        "rsl_rl_multi_critic_cfg_entry_point": (
+            f"{agents.__name__}.rsl_rl_multi_critic_cfg:UnitreeB2Z1ArmApexFlatPrivilegedTrackerMultiCriticRunnerCfg"
+        ),
         "env_cfg_entry_point": (
             f"{__name__}.flat_b2_z1_arm_tracker_env_cfg:UnitreeB2Z1ArmApexFlatPrivilegedTrackerEnvCfg"
         ),
@@ -325,9 +367,12 @@ gym.register(
 
 gym.register(
     id="Gurukul-Isaac-B2-Z1-Arm-APEX-Flat-Fixed-Wrist-Gripper-Tracker-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point="Gurukul.tasks.manager_based.go2_apex.env:ApexManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
+        "rsl_rl_multi_critic_cfg_entry_point": (
+            f"{agents.__name__}.rsl_rl_multi_critic_cfg:UnitreeB2Z1ArmApexFlatFixedWristGripperTrackerMultiCriticRunnerCfg"
+        ),
         "env_cfg_entry_point": (
             f"{__name__}.flat_b2_z1_arm_tracker_env_cfg:"
             "UnitreeB2Z1ArmApexFlatFixedWristGripperTrackerEnvCfg"
@@ -349,9 +394,12 @@ gym.register(
 
 gym.register(
     id="Gurukul-Isaac-B2-Z1-Arm-APEX-Flat-Fixed-Wrist-Gripper-Privileged-Tracker-v0",
-    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    entry_point="Gurukul.tasks.manager_based.go2_apex.env:ApexManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
+        "rsl_rl_multi_critic_cfg_entry_point": (
+            f"{agents.__name__}.rsl_rl_multi_critic_cfg:UnitreeB2Z1ArmApexFlatFixedWristGripperPrivilegedTrackerMultiCriticRunnerCfg"
+        ),
         "env_cfg_entry_point": (
             f"{__name__}.flat_b2_z1_arm_tracker_env_cfg:"
             "UnitreeB2Z1ArmApexFlatFixedWristGripperPrivilegedTrackerEnvCfg"

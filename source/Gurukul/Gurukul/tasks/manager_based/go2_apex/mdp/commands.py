@@ -33,6 +33,8 @@ from isaaclab.utils.math import (
     yaw_quat,
 )
 
+from Gurukul.utils.motion_validation import validate_motion_arrays
+
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedRLEnv
 
@@ -75,9 +77,29 @@ class MotionLoader:
         motion_file: str | Sequence[str],
         body_indexes: Sequence[int] | None = None,
         device: str = "cpu",
+        max_foot_distance: float | None = None,
+        fallback_body_names: Sequence[str] | None = None,
     ):
         motion_files = self._resolve_motion_files(motion_file)
         loaded_motions = [self._load_motion_file(path) for path in motion_files]
+        if max_foot_distance is not None:
+            if not np.isfinite(max_foot_distance) or max_foot_distance <= 0:
+                raise ValueError("max_foot_distance must be positive and finite")
+            for motion in loaded_motions:
+                names = motion["body_names"]
+                if names is None and fallback_body_names is not None:
+                    names = list(fallback_body_names)
+                if names is None or "base" not in names:
+                    raise ValueError("Foot reach validation requires named motion bodies including 'base'")
+                feet = [i for i, name in enumerate(names) if name.endswith("_foot")]
+                positions = motion["body_pos_w"]
+                distance = np.linalg.norm(positions[:, feet] - positions[:, names.index("base"), None], axis=-1)
+                if np.any(distance > max_foot_distance):
+                    frame, foot = np.unravel_index(np.argmax(distance), distance.shape)
+                    raise ValueError(
+                        f"{motion['path']}: frame {frame}, {names[feet[foot]]} is {distance[frame, foot]:.3f} m "
+                        f"from the root (limit {max_foot_distance:.3f} m). Reconvert a continuous frame range."
+                    )
         self._validate_motion_metadata(loaded_motions)
 
         first_motion = loaded_motions[0]
@@ -370,7 +392,15 @@ class MotionLoader:
             raise FileNotFoundError(f"Invalid file path: {motion_file}")
 
         data = np.load(motion_file)
+        validate_motion_arrays(data, motion_file)
         joint_pos = np.asarray(data["joint_pos"], dtype=np.float32)
+        for key, width in (("command_lin_vel_xy", 2), ("arm_ee_pos_w", 3)):
+            if key in data and data[key].shape != (len(joint_pos), width):
+                raise ValueError(f"Motion file '{motion_file}' has invalid {key} shape {data[key].shape}")
+        if "command_ang_vel_z" in data and data["command_ang_vel_z"].shape not in (
+            (len(joint_pos),), (len(joint_pos), 1),
+        ):
+            raise ValueError(f"Motion file '{motion_file}' has invalid command_ang_vel_z shape")
         command_ang_vel_z = None
         if "command_ang_vel_z" in data:
             command_ang_vel_z = data["command_ang_vel_z"].reshape(data["command_ang_vel_z"].shape[0], -1)
@@ -404,6 +434,8 @@ class MotionLoader:
                 )
             if "gripper_joint_vel" in data:
                 gripper_joint_vel = np.asarray(data["gripper_joint_vel"], dtype=np.float32)
+                if gripper_joint_vel.shape != gripper_joint_pos.shape:
+                    raise ValueError(f"Motion file '{motion_file}' has invalid gripper_joint_vel shape")
             else:
                 gripper_joint_vel = np.gradient(
                     gripper_joint_pos,
@@ -437,6 +469,15 @@ class MotionLoader:
             arm_ee_quat_w = (arm_ee_quat_w / quat_norm).astype(np.float32)
 
         object_attached = None
+        if "object_pos_w" in data:
+            expected = (len(joint_pos), len(data["object_names"]), 3) if "object_names" in data else None
+            if expected is None or data["object_pos_w"].shape != expected:
+                raise ValueError(f"Motion file '{motion_file}' has invalid object positions or missing object_names")
+            if "object_quat_w" in data and (
+                data["object_quat_w"].shape != (*expected[:2], 4)
+                or np.any(np.linalg.norm(data["object_quat_w"], axis=-1) < 1e-8)
+            ):
+                raise ValueError(f"Motion file '{motion_file}' has invalid object quaternions")
         if "object_attached" in data:
             object_attached = np.asarray(data["object_attached"], dtype=np.bool_)
             if object_attached.ndim == 1:
@@ -683,7 +724,13 @@ class MotionCommand(CommandTerm):
         self.joint_indexes = torch.cat([base_joint_indexes, gripper_joint_indexes])
         self.robot_motion_joint_names = [*self.base_motion_joint_names, *self.cfg.gripper_joint_names]
         motion_file = self.cfg.motion_files if len(self.cfg.motion_files) > 0 else self.cfg.motion_file
-        self.motion = MotionLoader(motion_file, body_indexes=None, device=self.device)
+        self.motion = MotionLoader(
+            motion_file,
+            body_indexes=None,
+            device=self.device,
+            max_foot_distance=self.cfg.max_reference_foot_distance,
+            fallback_body_names=self.cfg.body_names,
+        )
         self.motion._body_indexes = self._resolve_motion_body_indexes()
         self._motion_joint_indices = self._resolve_motion_joint_indices()
         self._motion_gripper_joint_indices = self._resolve_motion_gripper_joint_indices()
@@ -1940,6 +1987,7 @@ class MotionCommandCfg(CommandTermCfg):
 
     motion_file: str = MISSING
     motion_files: tuple[str, ...] = ()
+    max_reference_foot_distance: float | None = None
     anchor_body_name: str = MISSING
     body_names: list[str] = MISSING
     joint_names: list[str] | None = None

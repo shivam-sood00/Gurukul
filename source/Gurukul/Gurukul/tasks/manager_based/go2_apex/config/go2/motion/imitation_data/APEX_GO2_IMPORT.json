@@ -1,0 +1,179 @@
+{
+  "source": "APEX",
+  "source_repository": "https://github.com/marmotlab/APEX",
+  "fps": 50.0,
+  "csv_leg_order": [
+    "FL",
+    "FR",
+    "RL",
+    "RR"
+  ],
+  "range_convention": "zero-based, start inclusive, end exclusive",
+  "raw_files": [
+    {
+      "path": "imitation_data/animal_mocap/go2_retarget_canter_2ms.csv",
+      "sha256": "0359ed6bc3c7e12fa4000b2499c3dc3e88dc1767d03a7ac3c92f18f22768f89f",
+      "frames": 1001
+    },
+    {
+      "path": "imitation_data/animal_mocap/go2_retarget_jump.csv",
+      "sha256": "f1df575bd20e4b81c6b26ce867c249b3401dacbe0d240d57242e2e1c81b5d308",
+      "frames": 1001
+    },
+    {
+      "path": "imitation_data/animal_mocap/go2_retarget_pace.csv",
+      "sha256": "3e9030ac4eb49fb5cb4e669ce8488d2572fa233b162096f09d99ecd80f45ba1b",
+      "frames": 1001
+    },
+    {
+      "path": "imitation_data/animal_mocap/go2_retarget_trot.csv",
+      "sha256": "0125865c165689cd853ddce816b498ff1e420841dd14420c74ea73715ec577a7",
+      "frames": 1001
+    },
+    {
+      "path": "imitation_data/animal_mocap/hopturn_go2_STMR_resampled_50Hz.csv",
+      "sha256": "b62941d69c778d4d944d0e4481a88ffff67d62ed3604fcdd376af774e2903ed2",
+      "frames": 181
+    },
+    {
+      "path": "imitation_data/gait_switch/amble_pronk_pace_trot_canter.csv",
+      "sha256": "e2617958bfcdab90b97954e66161475d37e29b66254188d4b022b628c1ccdb53",
+      "frames": 1611
+    },
+    {
+      "path": "imitation_data/walk_these_ways/wtw_pronking.csv",
+      "sha256": "6420cf9b3836dd381580941cd0bb80b33c48cf38bf84bba9061db37c102ac333",
+      "frames": 1001
+    }
+  ],
+  "converted_files": [
+    {
+      "path": "npz/animal_mocap/go2_retarget_canter_2ms.npz",
+      "source_csv": "imitation_data/animal_mocap/go2_retarget_canter_2ms.csv",
+      "source_frame_range": [
+        0,
+        1000
+      ],
+      "frames": 1000,
+      "velocity_frame": "body",
+      "feet_frame": "yaw",
+      "sha256": "a35609155cc524968d247b4f61c0043b9534a257a10e44f8a0a856bbab413e49"
+    },
+    {
+      "path": "npz/animal_mocap/go2_retarget_jump.npz",
+      "source_csv": "imitation_data/animal_mocap/go2_retarget_jump.csv",
+      "source_frame_range": [
+        0,
+        1000
+      ],
+      "frames": 1000,
+      "velocity_frame": "body",
+      "feet_frame": "yaw",
+      "sha256": "06df9656fc472120799d07de267bdb3bdbb452632a4042d627adf75dac1d13b5"
+    },
+    {
+      "path": "npz/animal_mocap/go2_retarget_pace.npz",
+      "source_csv": "imitation_data/animal_mocap/go2_retarget_pace.csv",
+      "source_frame_range": [
+        0,
+        1000
+      ],
+      "frames": 1000,
+      "velocity_frame": "body",
+      "feet_frame": "yaw",
+      "sha256": "142b27f3558b4c50b35093da566a4bece462b1b83e346076993c14a0a0a440c5"
+    },
+    {
+      "path": "npz/animal_mocap/go2_retarget_trot.npz",
+      "source_csv": "imitation_data/animal_mocap/go2_retarget_trot.csv",
+      "source_frame_range": [
+        0,
+        1000
+      ],
+      "frames": 1000,
+      "velocity_frame": "body",
+      "feet_frame": "yaw",
+      "sha256": "2b76a2c8033d234bc46e7d102f070dd399345684c72302b25b0ae55e8c6a7771"
+    },
+    {
+      "path": "npz/animal_mocap/hopturn_go2_STMR_resampled_50Hz.npz",
+      "source_csv": "imitation_data/animal_mocap/hopturn_go2_STMR_resampled_50Hz.csv",
+      "source_frame_range": [
+        0,
+        181
+      ],
+      "frames": 181,
+      "velocity_frame": "world",
+      "feet_frame": "yaw",
+      "sha256": "9e812e476f1f9c771d439cb6058d43a06073d832c10051309904ac7673343b6b"
+    },
+    {
+      "path": "npz/gait_switch/amble_pronk_pace_trot_canter_frames_0000_0400.npz",
+      "source_csv": "imitation_data/gait_switch/amble_pronk_pace_trot_canter.csv",
+      "source_frame_range": [
+        0,
+        400
+      ],
+      "frames": 400,
+      "velocity_frame": "body",
+      "feet_frame": "yaw",
+      "sha256": "d68261fae237046b08d9f9d45c206760ef0b269c286893cc7125a41546440c7d"
+    },
+    {
+      "path": "npz/gait_switch/amble_pronk_pace_trot_canter_frames_0400_0800.npz",
+      "source_csv": "imitation_data/gait_switch/amble_pronk_pace_trot_canter.csv",
+      "source_frame_range": [
+        400,
+        800
+      ],
+      "frames": 400,
+      "velocity_frame": "body",
+      "feet_frame": "yaw",
+      "sha256": "28e3e94342b0ed6966cc7e0506339c42fba64fed1084010fee17b051cfb0c0a1"
+    },
+    {
+      "path": "npz/gait_switch/amble_pronk_pace_trot_canter_frames_0800_1200.npz",
+      "source_csv": "imitation_data/gait_switch/amble_pronk_pace_trot_canter.csv",
+      "source_frame_range": [
+        800,
+        1200
+      ],
+      "frames": 400,
+      "velocity_frame": "body",
+      "feet_frame": "yaw",
+      "sha256": "35ae4e1ce3b1e9a1cce1b70bb6f955068cc5c41e20d2344ef0b0b54b92940b4a"
+    },
+    {
+      "path": "npz/gait_switch/amble_pronk_pace_trot_canter_frames_1200_1611.npz",
+      "source_csv": "imitation_data/gait_switch/amble_pronk_pace_trot_canter.csv",
+      "source_frame_range": [
+        1200,
+        1611
+      ],
+      "frames": 411,
+      "velocity_frame": "body",
+      "feet_frame": "yaw",
+      "sha256": "8ea717388a1a0e9d9b58fe80f383023b5e0cfcf2fc75b94581bdfbaf493594f4"
+    },
+    {
+      "path": "npz/walk_these_ways/wtw_pronking.npz",
+      "source_csv": "imitation_data/walk_these_ways/wtw_pronking.csv",
+      "source_frame_range": [
+        0,
+        1000
+      ],
+      "frames": 1000,
+      "velocity_frame": "body",
+      "feet_frame": "world",
+      "sha256": "78d6909734fddca8b0d64916e22d087619c420700f419c079796932dd29378cc"
+    }
+  ],
+  "notes": [
+    "Raw CSV copies are unchanged, including reset artifacts.",
+    "Animal canter/trot/pace/jump and WTW pronking omit the invalid final frame 1000.",
+    "Hop-turn retains all 181 frames and uses world-frame base velocities.",
+    "The combined gait recording is split at root-position discontinuities 400, 800, 1200; no gait labels are inferred.",
+    "Raw CSVs are included in Git; converted NPZs use the repository Git LFS attributes."
+  ],
+  "total_training_frames": 6792
+}
